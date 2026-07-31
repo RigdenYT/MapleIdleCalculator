@@ -20,3 +20,12 @@ FIX
 
 This changes packaging and release validation only. Optimizer formulas and saved
 account/build formats are unchanged.
+
+REPOSITORY INSTALLATION NOTE
+----------------------------
+The .github directory is hidden on Linux desktops. Copying only the visible
+files leaves the old GitHub Actions workflow in place. Run:
+
+    ./install_into_repository.sh /full/path/to/MapleIdleCalculator
+
+from the extracted release folder to install all files, including .github.

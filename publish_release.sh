@@ -22,6 +22,12 @@ need_command python3
 [[ -x build_tools/build_linux.sh ]] || die "build_tools/build_linux.sh is missing or not executable."
 [[ -f .github/workflows/build-desktop-releases.yml ]] || die "GitHub release workflow was not found."
 
+workflow_file=".github/workflows/build-desktop-releases.yml"
+grep -q 'xvfb' "$workflow_file" || die "The GitHub workflow is stale: Linux Xvfb support is missing. Reinstall the complete release package, including the hidden .github folder."
+grep -q 'xauth' "$workflow_file" || die "The GitHub workflow is stale: Linux xauth support is missing."
+grep -q -- '--packaging-smoke-test' build_tools/build_linux.sh || die "The Linux build script is stale: packaged startup test is missing."
+grep -q -- '--packaging-smoke-test' build_tools/build_windows.bat || die "The Windows build script is stale: packaged startup test is missing."
+
 branch="$(git branch --show-current)"
 [[ "$branch" == "main" ]] || die "Releases must be made from main. Current branch: ${branch:-detached HEAD}"
 git remote get-url origin >/dev/null 2>&1 || die "The Git remote named origin is not configured."

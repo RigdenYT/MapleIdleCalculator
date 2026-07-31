@@ -104,7 +104,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install --yes python3-venv python3-tk tesseract-ocr tesseract-ocr-eng
+          sudo apt-get install --yes python3-venv python3-tk tesseract-ocr tesseract-ocr-eng xvfb xauth
           python3 --version
           tesseract --version | head -n 2
 
