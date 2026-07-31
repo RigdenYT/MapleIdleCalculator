@@ -27,6 +27,16 @@ if errorlevel 1 exit /b 1
 set MSIO_ONEFILE=1
 pyinstaller --clean --noconfirm build_tools\MapleStoryIdleOptimizer.spec
 if errorlevel 1 exit /b 1
+
+for /f %%V in ('python build_tools\release_metadata.py --print-version') do set VERSION=%%V
+set BASE=MapleStory-Idle-Optimizer-%VERSION%-Windows-x86_64
+echo Packaged startup smoke test: dist\%BASE%-onedir\%BASE%-onedir.exe
+start "" /wait "dist\%BASE%-onedir\%BASE%-onedir.exe" --packaging-smoke-test
+if errorlevel 1 exit /b 1
+echo Packaged startup smoke test: dist\%BASE%.exe
+start "" /wait "dist\%BASE%.exe" --packaging-smoke-test
+if errorlevel 1 exit /b 1
+
 python build_tools\package_release_artifacts.py
 if errorlevel 1 exit /b 1
 

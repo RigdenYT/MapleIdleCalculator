@@ -19,7 +19,7 @@ There are two ways to use the workflow:
    create a public/private GitHub Release.
 
 2. Version-tag build
-   Pushing a tag that exactly matches APP_VERSION, such as v2.6.7, produces the
+   Pushing a tag that exactly matches APP_VERSION, such as v2.6.8, produces the
    same artifacts and publishes them as a GitHub Release automatically.
 
 FIRST-TIME REPOSITORY SETUP FROM LINUX
@@ -53,8 +53,8 @@ FIRST-TIME REPOSITORY SETUP FROM LINUX
 6. Wait for both platform jobs to finish. Open the completed workflow run and
    download the two artifacts shown near the bottom:
 
-       MapleStory-Idle-Optimizer-2.6.7-Windows-x86_64
-       MapleStory-Idle-Optimizer-2.6.7-Linux-x86_64
+       MapleStory-Idle-Optimizer-2.6.8-Windows-x86_64
+       MapleStory-Idle-Optimizer-2.6.8-Linux-x86_64
 
    Each artifact contains:
 
@@ -67,40 +67,46 @@ CREATING THE FIRST GITHUB RELEASE
 ---------------------------------
 After the manual build succeeds, create and push the version tag:
 
-       git tag v2.6.7
-       git push origin v2.6.7
+       git tag v2.6.8
+       git push origin v2.6.8
 
-The workflow validates that v2.6.7 matches APP_VERSION = "2.6.7". It then
+The workflow validates that v2.6.8 matches APP_VERSION = "2.6.8". It then
 builds both platforms and creates the GitHub Release automatically. The Windows
 EXE and Linux executable will appear under the release's Assets section.
 
 FUTURE RELEASES
 ---------------
-For a future version, for example 2.6.8:
+For a future version, for example 2.6.9:
 
 1. Change APP_VERSION near the top of:
 
        maplestory_idle_companion_optimizer.py
 
-2. Add a matching "WHAT CHANGED IN 2.6.8" section to README.txt and update the
+2. Add a matching "WHAT CHANGED IN 2.6.9" section to README.txt and update the
    README/build-notes title. The metadata validator will catch omissions.
 
 3. Commit and push the changes:
 
        git add .
-       git commit -m "Release 2.6.8"
+       git commit -m "Release 2.6.9"
        git push
 
 4. Run the workflow manually first and test the downloaded programs.
 
 5. Publish the release only after the test build works:
 
-       git tag v2.6.8
-       git push origin v2.6.8
+       git tag v2.6.9
+       git push origin v2.6.9
 
 The PyInstaller specification reads APP_VERSION directly. The build scripts
 also regenerate Windows executable metadata from that version, so those files
 do not need to be edited by hand.
+
+The complete source package also includes publish_release.sh. After updating
+APP_VERSION and README.txt, run it from the repository root to validate and
+locally test Linux, commit and push the source, and push the matching tag. The
+tagged GitHub workflow then builds and publishes both the Windows EXE and Linux
+executable.
 
 LOCAL BUILDS
 ------------
@@ -144,3 +150,17 @@ TROUBLESHOOTING
 - Windows SmartScreen warning:
   The executable is unsigned. This is expected for an early private/community
   beta and is separate from whether the GitHub build succeeded.
+
+BUILD HOTFIX NOTES
+------------------
+The initial 2.6.7 workflow had two platform-specific OCR staging defects that
+are corrected in the current package:
+
+- Windows PowerShell treats variable names case-insensitively, so `$home`
+  collided with its built-in read-only `$HOME` variable. The workflow now uses
+  `$tesseractHome`.
+- Ubuntu may install tessdata under a versioned `4.00` or `5` directory. The
+  workflow now obtains the exact eng.traineddata path from dpkg, and the Python
+  staging tool also searches arbitrary versioned tessdata directories.
+
+After committing this hotfix, rerun the failed workflow from GitHub Actions.

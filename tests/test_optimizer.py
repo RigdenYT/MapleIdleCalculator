@@ -506,3 +506,21 @@ def test_crash_log_creation(tmp_path, monkeypatch) -> None:
     text = path.read_text(encoding="utf-8")
     assert "Regression test" in text
     assert "packaging test failure" in text
+
+
+def test_pyinstaller_bundles_pillow_tk_bridge_modules():
+    spec_text = (ROOT / "build_tools" / "MapleStoryIdleOptimizer.spec").read_text(encoding="utf-8")
+    assert '"PIL._tkinter_finder"' in spec_text
+    assert '"PIL._imagingtk"' in spec_text
+
+
+def test_release_builds_run_frozen_startup_smoke_tests():
+    source_text = MODULE_PATH.read_text(encoding="utf-8")
+    linux_text = (ROOT / "build_tools" / "build_linux.sh").read_text(encoding="utf-8")
+    windows_text = (ROOT / "build_tools" / "build_windows.bat").read_text(encoding="utf-8")
+    workflow_text = (ROOT / ".github" / "workflows" / "build-desktop-releases.yml").read_text(encoding="utf-8")
+
+    assert 'PACKAGING_SMOKE_TEST_FLAG = "--packaging-smoke-test"' in source_text
+    assert linux_text.count("--packaging-smoke-test") >= 1
+    assert windows_text.count("--packaging-smoke-test") >= 2
+    assert "xvfb" in workflow_text

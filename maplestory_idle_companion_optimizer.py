@@ -62,7 +62,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 APP_NAME = "MapleStory Idle Companion Optimizer"
-APP_VERSION = "2.6.7"
+APP_VERSION = "2.6.8"
 APP_SLUG = "maplestory-idle-optimizer"
 PROFILE_VERSION = 3
 
@@ -3885,7 +3885,33 @@ class OptimizerApp(tk.Tk):
         matte = None
         if isinstance(label_bg, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", label_bg):
             matte = tuple(int(label_bg[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
-        photo = self._gradient_photo(width, height, top_color, bottom_color, radius=radius, border_color=border_color, matte_color=matte)
+        try:
+            photo = self._gradient_photo(
+                width,
+                height,
+                top_color,
+                bottom_color,
+                radius=radius,
+                border_color=border_color,
+                matte_color=matte,
+            )
+        except Exception:
+            # A decorative gradient must never prevent the optimizer from
+            # starting. Frozen-build smoke tests still verify that the Pillow
+            # Tk bridge is packaged, while normal runs degrade to a flat label.
+            return tk.Label(
+                parent,
+                text=text,
+                foreground=fg,
+                background=label_bg,
+                borderwidth=1 if border_color is not None else 0,
+                relief="solid" if border_color is not None else "flat",
+                highlightthickness=0,
+                font=font,
+                anchor=anchor,
+                padx=padx,
+                pady=pady,
+            )
         lbl = tk.Label(
             parent,
             image=photo,
@@ -3905,15 +3931,19 @@ class OptimizerApp(tk.Tk):
 
     def _build_autoassign_strip(self, parent):
         strip = tk.Canvas(parent, width=320, height=42, highlightthickness=0, borderwidth=0, background=COLORS["bg"])
-        bg = self._gradient_photo(320, 42, (179, 221, 255, 255), (114, 172, 231, 255), radius=10, border_color=(122, 162, 204, 255))
-        pill = self._gradient_photo(96, 28, (212, 239, 84, 255), (155, 202, 32, 255), radius=8, border_color=(136, 168, 32, 255))
-        strip.create_image(0, 0, image=bg, anchor="nw", tags=("strip",))
-        strip.create_image(10, 7, image=pill, anchor="nw", tags=("button",))
+        try:
+            bg = self._gradient_photo(320, 42, (179, 221, 255, 255), (114, 172, 231, 255), radius=10, border_color=(122, 162, 204, 255))
+            pill = self._gradient_photo(96, 28, (212, 239, 84, 255), (155, 202, 32, 255), radius=8, border_color=(136, 168, 32, 255))
+            strip.create_image(0, 0, image=bg, anchor="nw", tags=("strip",))
+            strip.create_image(10, 7, image=pill, anchor="nw", tags=("button",))
+            strip.image = bg
+            strip.pill_image = pill
+        except Exception:
+            strip.create_rectangle(0, 0, 319, 41, fill="#9dc7eb", outline="#7aa2cc", tags=("strip",))
+            strip.create_rectangle(10, 7, 106, 35, fill="#b9d94d", outline="#88a820", tags=("button",))
         strip.create_text(58, 21, text="AUTO-ASSIGN", fill="#1b3151", font=("TkDefaultFont", 9, "bold"), tags=("button",))
         strip.create_text(118, 15, text="Import Stat Screenshots", anchor="w", fill="#1b4870", font=("TkDefaultFont", 9, "bold"), tags=("strip",))
         strip.create_text(118, 28, text="Read displayed stats from overlapping captures.", anchor="w", fill="#4e6b86", font=("TkDefaultFont", 8), tags=("strip",))
-        strip.image = bg
-        strip.pill_image = pill
         strip.configure(cursor="hand2")
         for tag in ("strip", "button"):
             strip.tag_bind(tag, "<Button-1>", lambda _e: self.import_stat_screenshots())
@@ -8824,18 +8854,42 @@ class AdvancedOptimizerApp(OptimizerApp):
         messagebox.showinfo("About and model notes", text, parent=self)
 
 
+PACKAGING_SMOKE_TEST_FLAG = "--packaging-smoke-test"
+
+
 def main() -> int:
+    packaging_smoke_test = PACKAGING_SMOKE_TEST_FLAG in sys.argv[1:]
     try:
+        if packaging_smoke_test:
+            # These modules are imported dynamically by Pillow and are the exact
+            # dependencies that static PyInstaller analysis previously missed.
+            import importlib
+
+            importlib.import_module("PIL._tkinter_finder")
+            importlib.import_module("PIL._imagingtk")
         app = AdvancedOptimizerApp()
+        if packaging_smoke_test:
+            # Constructing the complete UI exercises the Pillow/ImageTk bridge and
+            # bundled assets. Process pending geometry work, then exit cleanly so
+            # release scripts can verify the frozen executable without user input.
+            app.withdraw()
+            app.update_idletasks()
+            app.destroy()
+            return 0
         app.mainloop()
         return 0
     except Exception as exc:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         log_path = write_crash_log(
-            "Application startup or main loop", exc_type, exc_value, exc_traceback
+            "Packaged startup smoke test" if packaging_smoke_test else "Application startup or main loop",
+            exc_type,
+            exc_value,
+            exc_traceback,
         )
         print(f"{APP_NAME} failed to start: {exc}", file=sys.stderr)
         traceback.print_exc()
+        if packaging_smoke_test:
+            return 1
         try:
             root = tk.Tk()
             root.withdraw()

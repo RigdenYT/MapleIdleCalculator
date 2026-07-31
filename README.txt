@@ -1,4 +1,4 @@
-MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.7
+MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.8
 ============================================================
 
 OVERVIEW
@@ -17,6 +17,24 @@ No pip packages are required for the optimizer engine itself. Packaged releases
 bundle Python, Pillow, the English Tesseract OCR runtime, portraits, background,
 help images, and other assets. Running directly from source still requires the
 local Python/Tk/Pillow/Tesseract development dependencies described below.
+
+WHAT CHANGED IN 2.6.8
+---------------------
+- Fixed the packaged Linux startup crash caused by Pillow dynamically importing
+  PIL._tkinter_finder after PyInstaller analysis had completed.
+- The PyInstaller specification now explicitly bundles PIL._tkinter_finder and
+  PIL._imagingtk for both Windows and Linux releases.
+- Decorative gradient widgets now fall back to flat Tk controls if the Pillow/Tk
+  bridge fails unexpectedly, so a cosmetic rendering problem cannot crash startup.
+- Both the one-folder and single-file programs are now launched automatically
+  after every build with a packaging smoke-test flag. A release build fails if
+  the complete Tk/Pillow interface cannot be constructed.
+- Linux GitHub builds now use Xvfb for the packaged GUI startup check. Windows
+  builds run the same check on the native Windows runner.
+- Added publish_release.sh to each complete source package. Running it validates
+  and locally tests the Linux build, commits and pushes the version, then pushes
+  the matching tag that makes GitHub build and publish both platform files.
+- No optimizer formulas, account data, or save-file fields changed.
 
 WHAT CHANGED IN 2.6.7
 ---------------------

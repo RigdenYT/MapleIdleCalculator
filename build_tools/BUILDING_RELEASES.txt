@@ -1,4 +1,4 @@
-MAPLESTORY IDLE OPTIMIZER 2.6.7 — RELEASE BUILD NOTES
+MAPLESTORY IDLE OPTIMIZER 2.6.8 — RELEASE BUILD NOTES
 ======================================================
 
 The same source is used for Windows and Linux, but PyInstaller must run on the
@@ -23,8 +23,8 @@ Tagged release:
 - Commit and push the source.
 - Push a matching tag, for example:
 
-      git tag v2.6.7
-      git push origin v2.6.7
+      git tag v2.6.8
+      git push origin v2.6.8
 
 The workflow rejects a tag that does not exactly match APP_VERSION. A successful
 tagged run publishes a GitHub Release containing both platforms automatically.
@@ -56,8 +56,9 @@ LOCAL WINDOWS BUILD
 
 BUILD OUTPUTS
 -------------
-The build scripts create raw PyInstaller output under dist/ and upload-ready
-files under release/. Each platform's release directory contains:
+The build scripts create raw PyInstaller output under dist/, launch both the
+one-folder and single-file programs with --packaging-smoke-test, and only then
+create upload-ready files under release/. Each platform's release directory contains:
 
 - the final single-file executable;
 - a compressed one-folder diagnostic build;
@@ -76,7 +77,7 @@ Useful commands:
     python build_tools/release_metadata.py --print-version
     python build_tools/release_metadata.py --write-windows-version
     python build_tools/release_metadata.py --check
-    python build_tools/release_metadata.py --check-tag v2.6.7
+    python build_tools/release_metadata.py --check-tag v2.6.8
 
 TESSERACT OVERRIDES
 -------------------
