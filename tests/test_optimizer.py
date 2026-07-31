@@ -472,6 +472,54 @@ if __name__ == "__main__":
     main()
 
 
+
+def test_role_menu_waits_for_initiating_click_to_finish() -> None:
+    class DummyVar:
+        def get(self) -> str:
+            return "Not equipped"
+
+    class FakeApp:
+        def __init__(self) -> None:
+            self.roster_vars = {"hero_common": {"role": DummyVar()}}
+            self._roster_role_menu = None
+            self._roster_role_menu_after_id = None
+            self.scheduled = []
+            self.cancelled = []
+
+        def after(self, delay: int, callback):
+            token = f"after-{len(self.scheduled) + 1}"
+            self.scheduled.append((delay, callback, token))
+            return token
+
+        def after_cancel(self, token: str) -> None:
+            self.cancelled.append(token)
+
+    fake = FakeApp()
+    previous_active = opt.CompanionTile._active_level_tile
+    opt.CompanionTile._active_level_tile = None
+    try:
+        opt.OptimizerApp._show_roster_role_menu(
+            fake, "hero_common", object(), 100, 200
+        )
+        assert fake._roster_role_menu is None
+        assert fake._roster_role_menu_after_id == "after-1"
+        assert fake.scheduled[0][0] == opt.ROLE_MENU_POST_DELAY_MS
+        assert callable(fake.scheduled[0][1])
+        role_menu_source = MODULE_PATH.read_text(encoding="utf-8")
+        assert "menu.post(int(x_root), int(y_root))" in role_menu_source
+        assert "menu.grab_set_global()" in role_menu_source
+        assert "menu.tk_popup" not in role_menu_source
+
+        # A rapid second click cancels the still-pending first popup instead of
+        # allowing two menus to race each other after the mouse release.
+        opt.OptimizerApp._show_roster_role_menu(
+            fake, "hero_common", object(), 100, 200
+        )
+        assert fake.cancelled == ["after-1"]
+        assert fake._roster_role_menu_after_id == "after-2"
+    finally:
+        opt.CompanionTile._active_level_tile = previous_active
+
 def test_packaged_resource_paths_and_icon() -> None:
     assert opt.resource_path("assets", "companions").is_dir()
     assert (opt.ui_asset_directory() / "app_icon.png").is_file()
@@ -521,6 +569,7 @@ def test_release_builds_run_frozen_startup_smoke_tests():
     workflow_text = (ROOT / ".github" / "workflows" / "build-desktop-releases.yml").read_text(encoding="utf-8")
 
     assert 'PACKAGING_SMOKE_TEST_FLAG = "--packaging-smoke-test"' in source_text
+    assert "_smoke_test_companion_role_menu(app)" in source_text
     assert linux_text.count("--packaging-smoke-test") >= 1
     assert windows_text.count("--packaging-smoke-test") >= 2
     assert "xvfb" in workflow_text

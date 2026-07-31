@@ -1,0 +1,17 @@
+MAPLESTORY IDLE OPTIMIZER 2.6.9 — COMPANION ROLE MENU FIX
+==========================================================
+
+PROBLEM
+On affected Linux/Tk window managers, clicking a companion's role/equip badge
+posted the native Tk menu during the original mouse-press callback. The release
+from that same click could then dismiss the menu immediately, making it appear
+for only a split second.
+
+FIX
+- Role-menu posting is delayed briefly until the initiating click is complete.
+- A pending popup is cancelled before another is scheduled.
+- The menu uses dark text on its light background for consistent readability.
+- A regression test verifies delayed scheduling and rapid-click cancellation.
+- The frozen startup smoke test performs a real open/select/cleanup role-menu cycle.
+
+Optimizer calculations and saved account/build formats are unchanged.

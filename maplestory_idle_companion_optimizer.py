@@ -62,7 +62,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 APP_NAME = "MapleStory Idle Companion Optimizer"
-APP_VERSION = "2.6.8"
+APP_VERSION = "2.6.9"
 APP_SLUG = "maplestory-idle-optimizer"
 PROFILE_VERSION = 3
 
@@ -73,6 +73,7 @@ PROFILE_VERSION = 3
 RARITIES = ("Common", "Rare", "Epic", "Unique", "Legendary")
 RARITY_ORDER = {name: idx for idx, name in enumerate(RARITIES)}
 EQUIPPED_ROLES = ("Not equipped", "Main", "Sub")
+ROLE_MENU_POST_DELAY_MS = 90
 
 ORIGINAL_COMPANIONS = (
     "Hero",
@@ -5224,6 +5225,14 @@ class OptimizerApp(tk.Tk):
         active = CompanionTile._active_level_tile
         if active is not None and not active._finish_level_editor(True):
             return
+        pending = getattr(self, "_roster_role_menu_after_id", None)
+        if pending is not None:
+            try:
+                self.after_cancel(pending)
+            except tk.TclError:
+                pass
+            self._roster_role_menu_after_id = None
+
         previous = getattr(self, "_roster_role_menu", None)
         if previous is not None:
             try:
@@ -5231,41 +5240,90 @@ class OptimizerApp(tk.Tk):
                 previous.destroy()
             except tk.TclError:
                 pass
-        current = str(self.roster_vars[key]["role"].get())
-        menu = tk.Menu(
-            self,
-            tearoff=False,
-            background="#ffffff",
-            foreground=COLORS["text"],
-            activebackground=COLORS["accent"],
-            activeforeground="#10232b",
-            borderwidth=1,
-            relief="solid",
-            font=("TkDefaultFont", 10),
-        )
-        self._roster_role_menu = menu
+            self._roster_role_menu = None
 
-        def choose(role: str):
-            self._set_roster_role(key, role)
-            self._select_roster_tile(key)
+        # The badge callback begins inside the Canvas' ButtonPress event. On
+        # some Linux/Tk window managers, posting a native menu immediately lets
+        # the release from that same click dismiss it. This is the same focus /
+        # event-ordering issue that previously affected the inline level editor.
+        # Wait until the initiating click is fully complete before posting.
+        def post_menu():
+            self._roster_role_menu_after_id = None
+            if key not in self.roster_vars:
+                return
+            try:
+                if not self.winfo_exists() or not anchor_widget.winfo_exists():
+                    return
+            except tk.TclError:
+                return
 
-        for role in EQUIPPED_ROLES:
-            check = "✓  " if role == current else "    "
-            label = "Not equipped" if role == "Not equipped" else role
-            menu.add_command(label=f"{check}{label}", command=lambda selected=role: choose(selected))
-        try:
-            menu.tk_popup(int(x_root), int(y_root))
-        finally:
+            current = str(self.roster_vars[key]["role"].get())
+            menu = tk.Menu(
+                self,
+                tearoff=False,
+                background="#ffffff",
+                foreground="#111821",
+                activebackground=COLORS["accent"],
+                activeforeground="#10232b",
+                borderwidth=1,
+                relief="solid",
+                font=("TkDefaultFont", 10),
+            )
+            self._roster_role_menu = menu
+
+            menu_closed = False
+
+            def close_menu(_event=None):
+                nonlocal menu_closed
+                if menu_closed:
+                    return
+                menu_closed = True
+                try:
+                    menu.grab_release()
+                except tk.TclError:
+                    pass
+                try:
+                    menu.unpost()
+                except tk.TclError:
+                    pass
+                try:
+                    menu.destroy()
+                except tk.TclError:
+                    pass
+                if getattr(self, "_roster_role_menu", None) is menu:
+                    self._roster_role_menu = None
+
+            def choose(role: str):
+                try:
+                    self._set_roster_role(key, role)
+                    self._select_roster_tile(key)
+                finally:
+                    close_menu()
+
+            for role in EQUIPPED_ROLES:
+                check = "✓  " if role == current else "    "
+                label = "Not equipped" if role == "Not equipped" else role
+                menu.add_command(
+                    label=f"{check}{label}",
+                    command=lambda selected=role: choose(selected),
+                )
+
+            # Use non-blocking post plus a menu grab instead of tk_popup().
+            # tk_popup enters its modal loop immediately and can still consume
+            # the initiating button release on affected Linux/Tk builds. Native
+            # Menu bindings unpost on outside clicks while the grab is active.
+            menu.bind("<Unmap>", close_menu, add="+")
+            menu.bind("<Escape>", close_menu, add="+")
             try:
-                menu.grab_release()
+                menu.post(int(x_root), int(y_root))
+                try:
+                    menu.grab_set_global()
+                except tk.TclError:
+                    menu.grab_set()
             except tk.TclError:
-                pass
-            try:
-                menu.destroy()
-            except tk.TclError:
-                pass
-            if getattr(self, "_roster_role_menu", None) is menu:
-                self._roster_role_menu = None
+                close_menu()
+
+        self._roster_role_menu_after_id = self.after(ROLE_MENU_POST_DELAY_MS, post_menu)
 
     def _set_selected_roster_role(self, role: str):
         if self.selected_roster_key:
@@ -7089,6 +7147,7 @@ class AdvancedOptimizerApp(OptimizerApp):
         self._help_window: Optional[HelpBook] = None
         self._bug_report_window: Optional[BugReportDialog] = None
         self._roster_role_menu: Optional[tk.Menu] = None
+        self._roster_role_menu_after_id: Optional[str] = None
         super().__init__()
         self.bind_all("<F1>", lambda _event: self.show_help(), add="+")
         self.bind_all("<Control-Shift-B>", lambda _event: self.show_bug_report(), add="+")
@@ -8857,6 +8916,46 @@ class AdvancedOptimizerApp(OptimizerApp):
 PACKAGING_SMOKE_TEST_FLAG = "--packaging-smoke-test"
 
 
+def _smoke_test_companion_role_menu(app: AdvancedOptimizerApp) -> None:
+    """Exercise the frozen role chooser through a complete press/release/select cycle."""
+    probe = tk.Canvas(app, width=8, height=8, highlightthickness=0)
+    probe.place(x=2, y=2)
+    app.update_idletasks()
+    app.update()
+    key = next(iter(app.roster_vars))
+
+    def open_role_menu(_event=None):
+        app._show_roster_role_menu(
+            key,
+            probe,
+            probe.winfo_rootx() + 12,
+            probe.winfo_rooty() + 4,
+        )
+
+    probe.bind("<ButtonPress-1>", open_role_menu)
+    probe.event_generate("<ButtonPress-1>", x=4, y=4)
+    app.update()
+    probe.event_generate("<ButtonRelease-1>", x=4, y=4)
+
+    deadline = time.monotonic() + 2.0
+    while app._roster_role_menu is None and time.monotonic() < deadline:
+        app.update()
+        time.sleep(0.01)
+    menu = app._roster_role_menu
+    if menu is None or not menu.winfo_exists() or not menu.winfo_ismapped():
+        raise RuntimeError("Companion role menu did not remain open after click release.")
+    if menu.index("end") != len(EQUIPPED_ROLES) - 1:
+        raise RuntimeError("Companion role menu does not contain every role choice.")
+
+    menu.invoke(EQUIPPED_ROLES.index("Main"))
+    app.update_idletasks()
+    if str(app.roster_vars[key]["role"].get()) != "Main":
+        raise RuntimeError("Companion role menu did not apply the selected role.")
+    if app._roster_role_menu is not None:
+        raise RuntimeError("Companion role menu did not clean up after selection.")
+    probe.destroy()
+
+
 def main() -> int:
     packaging_smoke_test = PACKAGING_SMOKE_TEST_FLAG in sys.argv[1:]
     try:
@@ -8870,8 +8969,9 @@ def main() -> int:
         app = AdvancedOptimizerApp()
         if packaging_smoke_test:
             # Constructing the complete UI exercises the Pillow/ImageTk bridge and
-            # bundled assets. Process pending geometry work, then exit cleanly so
-            # release scripts can verify the frozen executable without user input.
+            # bundled assets. Also exercise the companion role chooser through the
+            # Linux/Tk press-release path that previously dismissed it instantly.
+            _smoke_test_companion_role_menu(app)
             app.withdraw()
             app.update_idletasks()
             app.destroy()

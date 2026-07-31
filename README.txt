@@ -1,4 +1,4 @@
-MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.8
+MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.9
 ============================================================
 
 OVERVIEW
@@ -17,6 +17,22 @@ No pip packages are required for the optimizer engine itself. Packaged releases
 bundle Python, Pillow, the English Tesseract OCR runtime, portraits, background,
 help images, and other assets. Running directly from source still requires the
 local Python/Tk/Pillow/Tesseract development dependencies described below.
+
+WHAT CHANGED IN 2.6.9
+---------------------
+- Fixed the companion role/equip chooser opening for only a split second on
+  affected Linux/Tk window managers.
+- The native role menu is now posted after the badge's initiating mouse click
+  has fully completed, preventing that same click's release event from
+  immediately dismissing the menu.
+- Rapid repeated badge clicks cancel the pending popup before scheduling a new
+  one, preventing overlapping role menus.
+- Corrected the role menu foreground color so its choices remain readable on
+  the light popup background.
+- Added a regression test for delayed role-menu scheduling and cancellation.
+- The packaged startup smoke test now performs an actual role-menu press, release,
+  selection, and cleanup cycle on both native build runners.
+- No optimizer formulas, account data, or save-file fields changed.
 
 WHAT CHANGED IN 2.6.8
 ---------------------
