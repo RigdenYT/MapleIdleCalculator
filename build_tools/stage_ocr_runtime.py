@@ -36,26 +36,69 @@ def clean_destination() -> Path:
 
 
 def find_tessdata(home: Path) -> Path:
+    """Find the directory containing eng.traineddata and configs/tsv.
+
+    Linux distributions do not agree on the versioned directory name. Ubuntu
+    22.04 commonly uses ``/usr/share/tesseract-ocr/4.00/tessdata``, while newer
+    systems often use ``.../5/tessdata``. Prefer an explicit environment
+    override, then inspect common and versioned installation locations.
+    """
     override = os.environ.get("TESSDATA_PREFIX", "").strip()
-    candidates = []
+    candidates: list[Path] = []
+
+    def add_candidate(path: Path) -> None:
+        path = path.expanduser()
+        if path not in candidates:
+            candidates.append(path)
+
     if override:
-        candidates.append(Path(override).expanduser())
-    candidates.extend(
-        [
-            home / "tessdata",
-            home / "share" / "tessdata",
-            home / "share" / "tesseract-ocr" / "5" / "tessdata",
-            home.parent / "share" / "tesseract-ocr" / "5" / "tessdata",
-            Path("/usr/share/tesseract-ocr/5/tessdata"),
-            Path("/usr/share/tessdata"),
-        ]
-    )
+        override_path = Path(override)
+        # TESSDATA_PREFIX is normally the tessdata directory itself, but some
+        # installations point it at the directory containing ``tessdata``.
+        add_candidate(override_path)
+        add_candidate(override_path / "tessdata")
+
+    for path in (
+        home / "tessdata",
+        home / "share" / "tessdata",
+        home / "share" / "tesseract-ocr" / "tessdata",
+        home.parent / "share" / "tessdata",
+        home.parent / "share" / "tesseract-ocr" / "tessdata",
+        Path(sys.prefix) / "share" / "tessdata",
+        Path(sys.prefix) / "share" / "tesseract-ocr" / "tessdata",
+        Path("/usr/local/share/tessdata"),
+        Path("/usr/local/share/tesseract-ocr/tessdata"),
+        Path("/usr/share/tessdata"),
+        Path("/usr/share/tesseract-ocr/tessdata"),
+    ):
+        add_candidate(path)
+
+    # Cover distro-specific version names without hard-coding one of them.
+    for root in (
+        home / "share" / "tesseract-ocr",
+        home.parent / "share" / "tesseract-ocr",
+        Path(sys.prefix) / "share" / "tesseract-ocr",
+        Path("/usr/local/share/tesseract-ocr"),
+        Path("/usr/share/tesseract-ocr"),
+    ):
+        if root.is_dir():
+            for path in sorted(root.glob("*/tessdata"), reverse=True):
+                add_candidate(path)
+
+    checked: list[str] = []
     for candidate in candidates:
-        if (candidate / "eng.traineddata").is_file():
+        checked.append(str(candidate))
+        if (
+            (candidate / "eng.traineddata").is_file()
+            and (candidate / "configs" / "tsv").is_file()
+        ):
             return candidate
+
+    searched = "\n  - ".join(checked)
     raise RuntimeError(
-        "Could not find eng.traineddata. Install the English Tesseract language data "
-        "or set TESSDATA_PREFIX to its tessdata directory."
+        "Could not find a complete English Tesseract data directory. Install "
+        "the English language data, or set TESSDATA_PREFIX to the directory "
+        "containing eng.traineddata and configs/tsv. Searched:\n  - " + searched
     )
 
 

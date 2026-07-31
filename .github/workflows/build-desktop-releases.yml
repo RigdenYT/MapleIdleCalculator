@@ -67,12 +67,16 @@ jobs:
             "$env:LOCALAPPDATA\Programs\Tesseract-OCR",
             "C:\Program Files\Tesseract-OCR"
           )
-          $home = $candidates | Where-Object { Test-Path (Join-Path $_ "tesseract.exe") } | Select-Object -First 1
-          if (-not $home) {
+          # PowerShell variable names are case-insensitive. `$HOME` is a built-in,
+          # read-only variable, so do not use `$home` for the Tesseract directory.
+          $tesseractHome = $candidates | Where-Object {
+            Test-Path (Join-Path $_ "tesseract.exe")
+          } | Select-Object -First 1
+          if (-not $tesseractHome) {
             throw "Chocolatey completed, but tesseract.exe was not found."
           }
-          "TESSERACT_HOME=$home" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          & (Join-Path $home "tesseract.exe") --version
+          "TESSERACT_HOME=$tesseractHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & (Join-Path $tesseractHome "tesseract.exe") --version
 
       - name: Build and test Windows release
         shell: cmd
@@ -103,6 +107,22 @@ jobs:
           sudo apt-get install --yes python3-venv python3-tk tesseract-ocr tesseract-ocr-eng
           python3 --version
           tesseract --version | head -n 2
+
+          # Ubuntu has used both versioned paths such as 4.00/tessdata and
+          # 5/tessdata. Ask the package manager for the exact installed path
+          # and pass it to the staging script instead of guessing the version.
+          ENG_TRAINEDDATA="$(dpkg-query -L tesseract-ocr-eng | awk '/\/eng\.traineddata$/ { print; exit }')"
+          if [[ -z "${ENG_TRAINEDDATA}" || ! -f "${ENG_TRAINEDDATA}" ]]; then
+            echo "Could not locate eng.traineddata from tesseract-ocr-eng." >&2
+            exit 1
+          fi
+          TESSDATA_DIR="$(dirname "${ENG_TRAINEDDATA}")"
+          if [[ ! -f "${TESSDATA_DIR}/configs/tsv" ]]; then
+            echo "Missing Tesseract TSV config: ${TESSDATA_DIR}/configs/tsv" >&2
+            exit 1
+          fi
+          echo "TESSDATA_PREFIX=${TESSDATA_DIR}" >> "${GITHUB_ENV}"
+          echo "Using tessdata: ${TESSDATA_DIR}"
 
       - name: Build and test Linux release
         shell: bash
