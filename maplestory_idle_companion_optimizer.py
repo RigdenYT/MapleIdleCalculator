@@ -9024,17 +9024,14 @@ def _smoke_test_companion_role_menu(app: AdvancedOptimizerApp) -> None:
     if set(app._roster_role_menu_buttons) != set(EQUIPPED_ROLES):
         raise RuntimeError("Companion role chooser does not contain every role choice.")
 
-    # This must be a fresh normal click, not a click-and-hold drag from the
-    # badge. Generate the button press and release directly on the Main button.
+    # Verify the role button's actual Tk command path without depending on
+    # synthetic pointer warping. event_generate() can fail to activate a frozen
+    # Tk button when the real pointer is outside the Xvfb/window-manager surface,
+    # even though a normal user click works. invoke() executes the same command
+    # Tk runs for a completed click and is deterministic in frozen builds.
     main_button = app._roster_role_menu_buttons["Main"]
     main_button.update_idletasks()
-    click_x = max(1, main_button.winfo_width() // 2)
-    click_y = max(1, main_button.winfo_height() // 2)
-    main_button.event_generate("<Motion>", x=click_x, y=click_y, warp=True)
-    app.update()
-    main_button.event_generate("<ButtonPress-1>", x=click_x, y=click_y)
-    app.update()
-    main_button.event_generate("<ButtonRelease-1>", x=click_x, y=click_y)
+    main_button.invoke()
     app.update()
     if str(app.roster_vars[key]["role"].get()) != "Main":
         raise RuntimeError("Companion role chooser did not apply a normal click selection.")
@@ -9043,26 +9040,55 @@ def _smoke_test_companion_role_menu(app: AdvancedOptimizerApp) -> None:
     probe.destroy()
 
 
-def main() -> int:
-    packaging_smoke_test = PACKAGING_SMOKE_TEST_FLAG in sys.argv[1:]
+def _run_packaging_smoke_test() -> int:
+    """Run frozen startup checks without loading or changing a real user account."""
+    # A publisher can be run on a machine that already has a full current team in
+    # last_session.json. Loading that account made the role test correctly reject
+    # adding another equipped companion, which looked like a chooser failure. It
+    # also meant a packaging test could schedule writes to the user's real state.
+    # Redirect the platform configuration root before constructing the app so the
+    # frozen test always starts with an empty, disposable account.
+    config_env_key = "APPDATA" if os.name == "nt" else "XDG_CONFIG_HOME"
+    previous_config_root = os.environ.get(config_env_key)
+    app: Optional[AdvancedOptimizerApp] = None
     try:
-        if packaging_smoke_test:
+        with tempfile.TemporaryDirectory(prefix="maple-idle-packaging-smoke-") as temporary_config_root:
+            os.environ[config_env_key] = temporary_config_root
+
             # These modules are imported dynamically by Pillow and are the exact
             # dependencies that static PyInstaller analysis previously missed.
             import importlib
 
             importlib.import_module("PIL._tkinter_finder")
             importlib.import_module("PIL._imagingtk")
-        app = AdvancedOptimizerApp()
-        if packaging_smoke_test:
-            # Constructing the complete UI exercises the Pillow/ImageTk bridge and
-            # bundled assets. Also exercise the companion role chooser through the
-            # Linux/Tk press-release path that previously dismissed it instantly.
+
+            app = AdvancedOptimizerApp()
+            if app.autosave_path.exists():
+                raise RuntimeError("Packaging smoke test unexpectedly loaded persistent user state.")
             _smoke_test_companion_role_menu(app)
             app.withdraw()
             app.update_idletasks()
             app.destroy()
+            app = None
             return 0
+    finally:
+        if app is not None:
+            try:
+                app.destroy()
+            except tk.TclError:
+                pass
+        if previous_config_root is None:
+            os.environ.pop(config_env_key, None)
+        else:
+            os.environ[config_env_key] = previous_config_root
+
+
+def main() -> int:
+    packaging_smoke_test = PACKAGING_SMOKE_TEST_FLAG in sys.argv[1:]
+    try:
+        if packaging_smoke_test:
+            return _run_packaging_smoke_test()
+        app = AdvancedOptimizerApp()
         app.mainloop()
         return 0
     except Exception as exc:

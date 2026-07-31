@@ -28,6 +28,7 @@ grep -q 'xvfb' "$workflow_file" || die "The GitHub workflow is stale: Linux Xvfb
 grep -q 'xauth' "$workflow_file" || die "The GitHub workflow is stale: Linux xauth support is missing."
 grep -q -- '--packaging-smoke-test' build_tools/build_linux.sh || die "The Linux build script is stale: packaged startup test is missing."
 grep -q -- '--packaging-smoke-test' build_tools/build_windows.bat || die "The Windows build script is stale: packaged startup test is missing."
+grep -q 'maple-idle-packaging-smoke-' maplestory_idle_companion_optimizer.py || die "The application source is stale: isolated packaging-test state is missing."
 
 branch="$(git branch --show-current)"
 [[ "$branch" == "main" ]] || die "Releases must be made from main. Current branch: ${branch:-detached HEAD}"

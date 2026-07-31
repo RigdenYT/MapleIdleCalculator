@@ -574,6 +574,13 @@ def test_release_builds_run_frozen_startup_smoke_tests():
 
     assert 'PACKAGING_SMOKE_TEST_FLAG = "--packaging-smoke-test"' in source_text
     assert "_smoke_test_companion_role_menu(app)" in source_text
+    assert "main_button.invoke()" in source_text
+    assert 'config_env_key = "APPDATA" if os.name == "nt" else "XDG_CONFIG_HOME"' in source_text
+    assert 'TemporaryDirectory(prefix="maple-idle-packaging-smoke-")' in source_text
+    assert "Packaging smoke test unexpectedly loaded persistent user state." in source_text
+    smoke_source = source_text[source_text.index("def _smoke_test_companion_role_menu"):source_text.index("def _run_packaging_smoke_test")]
+    assert "main_button.event_generate" not in smoke_source
+    assert "warp=True" not in smoke_source
     assert linux_text.count("--packaging-smoke-test") >= 1
     assert windows_text.count("--packaging-smoke-test") >= 2
     assert "xvfb" in workflow_text

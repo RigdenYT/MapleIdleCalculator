@@ -11,6 +11,6 @@ FIX
 - Opening and selecting are now two independent clicks.
 - The chooser stays visible until selection, Cancel, Escape, a second badge open,
   or an outside click.
-- The packaged GUI smoke test performs a normal press/release on the Main button.
+- The packaged GUI smoke test confirms the chooser remains open after the badge release, then invokes the Main button through Tk's normal command path. This avoids unreliable synthetic pointer warping in frozen builds.
 
 Optimizer calculations and saved account/build formats are unchanged.

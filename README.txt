@@ -27,8 +27,13 @@ WHAT CHANGED IN 2.6.10
   normal click after the chooser opens; dragging from the badge is unnecessary.
 - The chooser remains open until a role is selected, Cancel is pressed, Escape
   is pressed, the badge is opened again, or another area of the app is clicked.
-- The packaged startup smoke test now performs two independent clicks: one to
-  open the chooser and another press/release on Main.
+- The packaged startup smoke test verifies that the chooser survives the badge
+  release, then activates Main through the button's real Tk command path. It no
+  longer depends on synthetic pointer warping, which was unreliable in frozen
+  Linux builds even when the button itself worked normally.
+- Packaging smoke tests now use a temporary configuration directory and never
+  restore or modify the publisher's real account. A full saved companion team
+  can no longer make the role test fail because no additional slot is available.
 - No optimizer formulas, account data, or save-file fields changed.
 
 WHAT CHANGED IN 2.6.9
