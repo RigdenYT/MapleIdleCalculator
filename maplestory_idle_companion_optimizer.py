@@ -62,7 +62,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 APP_NAME = "MapleStory Idle Companion Optimizer"
-APP_VERSION = "2.6.6"
+APP_VERSION = "2.6.7"
 APP_SLUG = "maplestory-idle-optimizer"
 PROFILE_VERSION = 3
 

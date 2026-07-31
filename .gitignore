@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local virtual environments and build output
+.build-venv/
+.venv/
+venv/
+build/
+dist/
+release/
+
+# Platform-specific OCR runtimes are staged during release builds.
+# Keep the directory structure/documentation, but do not commit generated binaries.
+vendor/ocr/*/
+!vendor/ocr/README.txt
+
+# Local accounts, reports, and diagnostics
+*.autosave.json
+bug_report_*.zip
+crash_logs/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

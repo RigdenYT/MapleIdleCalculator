@@ -1,13 +1,22 @@
-# PyInstaller specification for MapleStory Idle Companion Optimizer 2.6.6.
+# PyInstaller specification for MapleStory Idle Companion Optimizer.
 from __future__ import annotations
 
 import os
 import platform
+import re
 from pathlib import Path
 
 ROOT = Path(SPEC).resolve().parent.parent
 ENTRY = ROOT / "maplestory_idle_companion_optimizer.py"
-VERSION = "2.6.6"
+source_text = ENTRY.read_text(encoding="utf-8")
+version_match = re.search(
+    r'^APP_VERSION\s*=\s*["\'](?P<version>\d+\.\d+\.\d+)["\']\s*$',
+    source_text,
+    re.MULTILINE,
+)
+if not version_match:
+    raise SystemExit(f"Could not read APP_VERSION from {ENTRY}")
+VERSION = version_match.group("version")
 ONEFILE = os.environ.get("MSIO_ONEFILE", "0") == "1"
 SYSTEM = "Windows" if os.name == "nt" else "Linux"
 MACHINE = platform.machine().casefold()

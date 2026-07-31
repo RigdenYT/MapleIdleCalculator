@@ -1,0 +1,146 @@
+MAPLESTORY IDLE OPTIMIZER — GITHUB BUILD AND RELEASE SETUP
+===========================================================
+
+WHAT THIS ADDS
+--------------
+The repository includes:
+
+    .github/workflows/build-desktop-releases.yml
+
+GitHub provides a real Windows runner and a real Linux runner. Each runner
+installs the build dependencies, stages its own Tesseract OCR runtime, runs the
+test suite, builds the one-folder and single-file program, packages checksums,
+and uploads the results.
+
+There are two ways to use the workflow:
+
+1. Manual build
+   Produces downloadable Windows and Linux artifacts for testing, but does not
+   create a public/private GitHub Release.
+
+2. Version-tag build
+   Pushing a tag that exactly matches APP_VERSION, such as v2.6.7, produces the
+   same artifacts and publishes them as a GitHub Release automatically.
+
+FIRST-TIME REPOSITORY SETUP FROM LINUX
+--------------------------------------
+1. Create an empty GitHub repository. A private repository is fine.
+
+2. Extract this package, then open a terminal in the directory containing:
+
+       maplestory_idle_companion_optimizer.py
+       assets/
+       build_tools/
+       .github/
+
+3. Initialize and push the repository:
+
+       git init
+       git branch -M main
+       git add .
+       git commit -m "Initial MapleStory Idle Optimizer release"
+       git remote add origin git@github.com:YOUR_USERNAME/YOUR_REPOSITORY.git
+       git push -u origin main
+
+   HTTPS may be used instead of SSH by replacing the remote URL.
+
+4. Open the repository on GitHub, select Actions, then select:
+
+       Build Desktop Releases
+
+5. Select Run workflow, keep the main branch selected, and run it.
+
+6. Wait for both platform jobs to finish. Open the completed workflow run and
+   download the two artifacts shown near the bottom:
+
+       MapleStory-Idle-Optimizer-2.6.7-Windows-x86_64
+       MapleStory-Idle-Optimizer-2.6.7-Linux-x86_64
+
+   Each artifact contains:
+
+   - the final single-file program;
+   - a one-folder diagnostic build archive;
+   - a README copy;
+   - a SHA256SUMS file.
+
+CREATING THE FIRST GITHUB RELEASE
+---------------------------------
+After the manual build succeeds, create and push the version tag:
+
+       git tag v2.6.7
+       git push origin v2.6.7
+
+The workflow validates that v2.6.7 matches APP_VERSION = "2.6.7". It then
+builds both platforms and creates the GitHub Release automatically. The Windows
+EXE and Linux executable will appear under the release's Assets section.
+
+FUTURE RELEASES
+---------------
+For a future version, for example 2.6.8:
+
+1. Change APP_VERSION near the top of:
+
+       maplestory_idle_companion_optimizer.py
+
+2. Add a matching "WHAT CHANGED IN 2.6.8" section to README.txt and update the
+   README/build-notes title. The metadata validator will catch omissions.
+
+3. Commit and push the changes:
+
+       git add .
+       git commit -m "Release 2.6.8"
+       git push
+
+4. Run the workflow manually first and test the downloaded programs.
+
+5. Publish the release only after the test build works:
+
+       git tag v2.6.8
+       git push origin v2.6.8
+
+The PyInstaller specification reads APP_VERSION directly. The build scripts
+also regenerate Windows executable metadata from that version, so those files
+do not need to be edited by hand.
+
+LOCAL BUILDS
+------------
+GitHub Actions does not replace local Linux testing. You can still run:
+
+       ./build_tools/build_linux.sh
+
+The upload-ready files will be placed in:
+
+       release/
+
+Windows can also be built locally on Windows with:
+
+       build_tools\build_windows.bat
+
+WORKFLOW SECURITY AND PERMISSIONS
+---------------------------------
+Normal build jobs receive read-only repository access. Only the tagged release
+job receives contents: write permission, and only so GitHub CLI can create the
+release and upload its assets. No personal access token or repository secret is
+required; GitHub supplies the short-lived GITHUB_TOKEN for the workflow run.
+
+TROUBLESHOOTING
+---------------
+- No Run workflow button:
+  Confirm the workflow file is on the repository's default branch and Actions
+  are enabled for the repository.
+
+- Tag validation failure:
+  The pushed tag must be exactly v followed by APP_VERSION.
+
+- Windows Tesseract installation failure:
+  Re-run the job once. If the Chocolatey package itself is unavailable, inspect
+  the Install Windows Tesseract runtime step in the workflow log.
+
+- A platform build fails:
+  Open that job and expand the failed step. The build scripts run tests before
+  PyInstaller, so the log will distinguish a test failure, OCR staging failure,
+  and packaging failure.
+
+- Windows SmartScreen warning:
+  The executable is unsigned. This is expected for an early private/community
+  beta and is separate from whether the GitHub build succeeded.

@@ -1,34 +1,91 @@
-MAPLESTORY IDLE OPTIMIZER 2.6.6 — RELEASE BUILD NOTES
+MAPLESTORY IDLE OPTIMIZER 2.6.7 — RELEASE BUILD NOTES
 ======================================================
 
-The same source is used for both operating systems, but each executable must be
-built on its target operating system.
+The same source is used for Windows and Linux, but PyInstaller must run on the
+target operating system. GitHub Actions is the recommended release path because
+it provides a clean Windows runner and a clean Linux runner from one Linux-hosted
+repository.
 
-LINUX
------
-1. Install Python 3, Tk, Tesseract, and the English Tesseract language data on
-   the build computer.
+GITHUB ACTIONS — RECOMMENDED
+----------------------------
+Workflow file:
+
+    .github/workflows/build-desktop-releases.yml
+
+Manual run:
+- Open the repository's Actions page.
+- Select Build Desktop Releases.
+- Select Run workflow.
+- Download the Windows and Linux artifacts from the completed run.
+
+Tagged release:
+- Ensure APP_VERSION and README identify the intended version.
+- Commit and push the source.
+- Push a matching tag, for example:
+
+      git tag v2.6.7
+      git push origin v2.6.7
+
+The workflow rejects a tag that does not exactly match APP_VERSION. A successful
+tagged run publishes a GitHub Release containing both platforms automatically.
+See GITHUB_RELEASES.txt for first-time repository setup and future-release steps.
+
+LOCAL LINUX BUILD
+-----------------
+1. Install Python 3, Tk, Tesseract, and English Tesseract language data.
 2. Run:
-       ./build_tools/build_linux.sh
-3. Test the generated -onedir build first.
-4. Test screenshot import on a computer that does NOT rely on system Tesseract.
-5. Then distribute the single-file build from dist/.
 
-WINDOWS
--------
+       ./build_tools/build_linux.sh
+
+3. Test the generated one-folder archive first.
+4. Test screenshot import without relying on a different system Tesseract.
+5. Distribute the single-file executable from release/ after testing.
+
+LOCAL WINDOWS BUILD
+-------------------
 1. Install 64-bit Python 3 with Tcl/Tk.
 2. Install a 64-bit Tesseract distribution on the build computer. Testers will
    not need it; the staging script embeds its runtime files.
-3. Double-click build_tools\build_windows.bat or run it from Command Prompt.
-4. Test the generated -onedir build first.
+3. Run:
+
+       build_tools\build_windows.bat
+
+4. Test the generated one-folder archive first.
 5. Test screenshot import on a Windows account without Tesseract on PATH.
-6. Then distribute the single-file EXE from dist\.
+6. Distribute the single-file EXE from release/ after testing.
+
+BUILD OUTPUTS
+-------------
+The build scripts create raw PyInstaller output under dist/ and upload-ready
+files under release/. Each platform's release directory contains:
+
+- the final single-file executable;
+- a compressed one-folder diagnostic build;
+- a versioned README;
+- a platform-specific SHA256SUMS file.
+
+VERSION METADATA
+----------------
+APP_VERSION in maplestory_idle_companion_optimizer.py is the version source of
+truth. The PyInstaller specification reads it directly. Before every build,
+release_metadata.py generates Windows version information and verifies the
+README/build notes.
+
+Useful commands:
+
+    python build_tools/release_metadata.py --print-version
+    python build_tools/release_metadata.py --write-windows-version
+    python build_tools/release_metadata.py --check
+    python build_tools/release_metadata.py --check-tag v2.6.7
 
 TESSERACT OVERRIDES
 -------------------
 - Set TESSERACT_HOME on Windows to the folder containing tesseract.exe.
 - Set MAPLE_IDLE_TESSERACT to an exact executable path on either platform.
-- Set TESSDATA_PREFIX when the English trained data is in a nonstandard folder.
+- Set TESSDATA_PREFIX when English trained data is in a nonstandard folder.
+
+OCR runtimes under vendor/ocr/<platform>-<arch> are generated build artifacts.
+They are not intended to be committed to the repository.
 
 RELEASE SMOKE TEST
 ------------------
@@ -39,7 +96,10 @@ RELEASE SMOKE TEST
 - Import all required Stat Info screenshots and review imported values.
 - Optimize a team and run robustness ranges.
 - Open Help and generate a diagnostic bug-report ZIP.
-- Force no errors, then confirm no crash log is created.
-- Confirm errors that do occur are written under the per-user crash_logs folder.
+- Confirm expected use creates no crash log.
+- Confirm a forced error is written under the per-user crash_logs folder.
+- Verify the published file against SHA256SUMS if transfer corruption is
+  suspected.
 
-The first external release may trigger Windows SmartScreen because it is unsigned.
+The first external Windows release may trigger SmartScreen because it is
+unsigned.

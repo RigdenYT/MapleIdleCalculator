@@ -1,4 +1,4 @@
-MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.6
+MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.7
 ============================================================
 
 OVERVIEW
@@ -17,6 +17,26 @@ No pip packages are required for the optimizer engine itself. Packaged releases
 bundle Python, Pillow, the English Tesseract OCR runtime, portraits, background,
 help images, and other assets. Running directly from source still requires the
 local Python/Tk/Pillow/Tesseract development dependencies described below.
+
+WHAT CHANGED IN 2.6.7
+---------------------
+- Added a GitHub Actions release pipeline that builds native Windows x86_64
+  and Linux x86_64 packages from the same tagged source.
+- Manual workflow runs create downloadable test artifacts without publishing a
+  release. Pushing a matching version tag, such as v2.6.7, builds both systems
+  and publishes the files to a GitHub Release automatically.
+- Added release-metadata validation so the Git tag, application version,
+  executable names, README, and Windows version information cannot silently
+  disagree.
+- Windows version metadata is generated from APP_VERSION instead of requiring
+  several manual edits for every release.
+- Build outputs are now packaged into upload-ready single-file and one-folder
+  archives with per-platform SHA-256 checksum files.
+- Added repository setup and future-release instructions for running the entire
+  process from Linux through GitHub-hosted Windows and Linux runners.
+- OCR binaries are staged on the temporary build runner rather than stored in
+  the source repository.
+- No optimizer formulas, account data, or save-file fields changed.
 
 WHAT CHANGED IN 2.6.6
 ---------------------
