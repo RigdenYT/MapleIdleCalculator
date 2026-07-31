@@ -473,7 +473,7 @@ if __name__ == "__main__":
 
 
 
-def test_role_menu_waits_for_initiating_click_to_finish() -> None:
+def test_role_chooser_waits_for_initiating_click_to_finish() -> None:
     class DummyVar:
         def get(self) -> str:
             return "Not equipped"
@@ -494,6 +494,8 @@ def test_role_menu_waits_for_initiating_click_to_finish() -> None:
         def after_cancel(self, token: str) -> None:
             self.cancelled.append(token)
 
+        _close_roster_role_menu = opt.OptimizerApp._close_roster_role_menu
+
     fake = FakeApp()
     previous_active = opt.CompanionTile._active_level_tile
     opt.CompanionTile._active_level_tile = None
@@ -506,8 +508,10 @@ def test_role_menu_waits_for_initiating_click_to_finish() -> None:
         assert fake.scheduled[0][0] == opt.ROLE_MENU_POST_DELAY_MS
         assert callable(fake.scheduled[0][1])
         role_menu_source = MODULE_PATH.read_text(encoding="utf-8")
-        assert "menu.post(int(x_root), int(y_root))" in role_menu_source
-        assert "menu.grab_set_global()" in role_menu_source
+        assert "chooser = tk.Frame(" in role_menu_source
+        assert "self._roster_role_menu_buttons[role] = button" in role_menu_source
+        assert "menu.post(" not in role_menu_source
+        assert "menu.grab_set" not in role_menu_source
         assert "menu.tk_popup" not in role_menu_source
 
         # A rapid second click cancels the still-pending first popup instead of

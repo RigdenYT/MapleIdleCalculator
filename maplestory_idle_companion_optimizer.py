@@ -62,7 +62,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 APP_NAME = "MapleStory Idle Companion Optimizer"
-APP_VERSION = "2.6.9"
+APP_VERSION = "2.6.10"
 APP_SLUG = "maplestory-idle-optimizer"
 PROFILE_VERSION = 3
 
@@ -2365,8 +2365,8 @@ class HelpBook(tk.Toplevel):
                 "Each portrait represents one rarity page of a companion.\n\n"
                 "• Click the portrait to toggle ownership.\n"
                 "• Click the level chip to type the page's current level.\n"
-                "• Click the circular role badge and choose Not equipped, Main, or Sub from the menu.\n\n"
-                "Only mark the team currently equipped in the selected build. The role menu does not change the existing Main until you deliberately choose Main. "
+                "• Click the circular role badge and choose Not equipped, Main, or Sub from the chooser.\n\n"
+                "Only mark the team currently equipped in the selected build. The role chooser does not change the existing Main until you deliberately choose Main. "
                 "The app allows one Main and the number of total slots entered under Character Stat.\n\n"
                 "Sub numbering is only visual; the order of Sub companions does not affect the calculation."
             ),
@@ -5005,7 +5005,7 @@ class OptimizerApp(tk.Tk):
             intro,
             text=(
                 "Click a portrait to toggle ownership. Click its level chip to type a level. "
-                "Click the small role badge and choose Main, Sub, or not equipped for the active build."
+                "Click the small role badge and choose Main, Sub, or not equipped in the persistent chooser."
             ),
             style="Panel.TLabel",
             wraplength=820,
@@ -5212,19 +5212,8 @@ class OptimizerApp(tk.Tk):
         self._set_roster_role(key, next_role)
         self._select_roster_tile(key)
 
-    def _show_roster_role_menu(
-        self,
-        key: str,
-        anchor_widget: tk.Widget,
-        x_root: int,
-        y_root: int,
-    ):
-        """Show an explicit role chooser without changing the current Main first."""
-        if key not in self.roster_vars:
-            return
-        active = CompanionTile._active_level_tile
-        if active is not None and not active._finish_level_editor(True):
-            return
+    def _close_roster_role_menu(self) -> None:
+        """Destroy the persistent in-window role chooser and its bindings."""
         pending = getattr(self, "_roster_role_menu_after_id", None)
         if pending is not None:
             try:
@@ -5233,97 +5222,182 @@ class OptimizerApp(tk.Tk):
                 pass
             self._roster_role_menu_after_id = None
 
-        previous = getattr(self, "_roster_role_menu", None)
-        if previous is not None:
+        click_binding = getattr(self, "_roster_role_menu_click_binding_id", None)
+        if click_binding is not None:
             try:
-                previous.unpost()
-                previous.destroy()
+                self.unbind("<ButtonPress-1>", click_binding)
             except tk.TclError:
                 pass
-            self._roster_role_menu = None
+            self._roster_role_menu_click_binding_id = None
 
-        # The badge callback begins inside the Canvas' ButtonPress event. On
-        # some Linux/Tk window managers, posting a native menu immediately lets
-        # the release from that same click dismiss it. This is the same focus /
-        # event-ordering issue that previously affected the inline level editor.
-        # Wait until the initiating click is fully complete before posting.
-        def post_menu():
+        escape_binding = getattr(self, "_roster_role_menu_escape_binding_id", None)
+        if escape_binding is not None:
+            try:
+                self.unbind("<Escape>", escape_binding)
+            except tk.TclError:
+                pass
+            self._roster_role_menu_escape_binding_id = None
+
+        chooser = getattr(self, "_roster_role_menu", None)
+        if chooser is not None:
+            try:
+                chooser.destroy()
+            except tk.TclError:
+                pass
+        self._roster_role_menu = None
+        self._roster_role_menu_buttons = {}
+
+    @staticmethod
+    def _widget_is_inside(widget: tk.Widget, ancestor: tk.Widget) -> bool:
+        """Return True when widget is ancestor or one of its descendants."""
+        current: Optional[tk.Widget] = widget
+        while current is not None:
+            if current is ancestor:
+                return True
+            try:
+                parent_name = current.winfo_parent()
+                if not parent_name:
+                    return False
+                current = current.nametowidget(parent_name)
+            except (KeyError, tk.TclError):
+                return False
+        return False
+
+    def _show_roster_role_menu(
+        self,
+        key: str,
+        anchor_widget: tk.Widget,
+        x_root: int,
+        y_root: int,
+    ):
+        """Show a persistent in-window role chooser for one companion page."""
+        if key not in self.roster_vars:
+            return
+        active = CompanionTile._active_level_tile
+        if active is not None and not active._finish_level_editor(True):
+            return
+
+        # Cancel a pending chooser and remove any chooser already on screen. A
+        # second badge click therefore behaves predictably instead of creating
+        # overlapping controls.
+        self._close_roster_role_menu()
+
+        # The badge callback runs during the Canvas ButtonPress event. Wait
+        # until that complete click has finished before creating the chooser.
+        # Unlike a native tk.Menu, this is an ordinary in-window Frame, so the
+        # initiating ButtonRelease cannot dismiss it or put it into drag-select
+        # mode on affected Linux/Tk window managers.
+        def post_chooser():
             self._roster_role_menu_after_id = None
             if key not in self.roster_vars:
                 return
             try:
                 if not self.winfo_exists() or not anchor_widget.winfo_exists():
                     return
-            except tk.TclError:
+            except (AttributeError, tk.TclError):
                 return
 
             current = str(self.roster_vars[key]["role"].get())
-            menu = tk.Menu(
+            chooser = tk.Frame(
                 self,
-                tearoff=False,
                 background="#ffffff",
-                foreground="#111821",
-                activebackground=COLORS["accent"],
-                activeforeground="#10232b",
                 borderwidth=1,
                 relief="solid",
-                font=("TkDefaultFont", 10),
+                highlightthickness=1,
+                highlightbackground=COLORS["border"],
+                padx=4,
+                pady=4,
             )
-            self._roster_role_menu = menu
+            self._roster_role_menu = chooser
+            self._roster_role_menu_buttons = {}
 
-            menu_closed = False
-
-            def close_menu(_event=None):
-                nonlocal menu_closed
-                if menu_closed:
-                    return
-                menu_closed = True
-                try:
-                    menu.grab_release()
-                except tk.TclError:
-                    pass
-                try:
-                    menu.unpost()
-                except tk.TclError:
-                    pass
-                try:
-                    menu.destroy()
-                except tk.TclError:
-                    pass
-                if getattr(self, "_roster_role_menu", None) is menu:
-                    self._roster_role_menu = None
-
-            def choose(role: str):
+            def choose(role: str) -> None:
                 try:
                     self._set_roster_role(key, role)
                     self._select_roster_tile(key)
                 finally:
-                    close_menu()
+                    self._close_roster_role_menu()
+
+            title = tk.Label(
+                chooser,
+                text="Current role",
+                anchor="w",
+                background="#ffffff",
+                foreground="#111821",
+                font=("TkDefaultFont", 9, "bold"),
+                padx=7,
+                pady=4,
+            )
+            title.pack(fill="x")
 
             for role in EQUIPPED_ROLES:
-                check = "✓  " if role == current else "    "
+                selected = role == current
                 label = "Not equipped" if role == "Not equipped" else role
-                menu.add_command(
-                    label=f"{check}{label}",
-                    command=lambda selected=role: choose(selected),
+                button = tk.Button(
+                    chooser,
+                    text=("✓  " if selected else "    ") + label,
+                    anchor="w",
+                    justify="left",
+                    background=COLORS["accent"] if selected else "#ffffff",
+                    foreground="#10232b" if selected else "#111821",
+                    activebackground=COLORS["accent"],
+                    activeforeground="#10232b",
+                    relief="flat",
+                    borderwidth=0,
+                    padx=9,
+                    pady=6,
+                    font=("TkDefaultFont", 10),
+                    command=lambda selected_role=role: choose(selected_role),
                 )
+                button.pack(fill="x")
+                self._roster_role_menu_buttons[role] = button
 
-            # Use non-blocking post plus a menu grab instead of tk_popup().
-            # tk_popup enters its modal loop immediately and can still consume
-            # the initiating button release on affected Linux/Tk builds. Native
-            # Menu bindings unpost on outside clicks while the grab is active.
-            menu.bind("<Unmap>", close_menu, add="+")
-            menu.bind("<Escape>", close_menu, add="+")
-            try:
-                menu.post(int(x_root), int(y_root))
-                try:
-                    menu.grab_set_global()
-                except tk.TclError:
-                    menu.grab_set()
-            except tk.TclError:
-                close_menu()
+            cancel = tk.Button(
+                chooser,
+                text="Cancel",
+                anchor="center",
+                background="#eef1f5",
+                foreground="#364152",
+                activebackground="#dde3ea",
+                activeforeground="#111821",
+                relief="flat",
+                borderwidth=0,
+                padx=9,
+                pady=4,
+                font=("TkDefaultFont", 9),
+                command=self._close_roster_role_menu,
+            )
+            cancel.pack(fill="x", pady=(3, 0))
 
-        self._roster_role_menu_after_id = self.after(ROLE_MENU_POST_DELAY_MS, post_menu)
+            chooser.update_idletasks()
+            root_x = self.winfo_rootx()
+            root_y = self.winfo_rooty()
+            local_x = int(x_root) - root_x
+            local_y = int(y_root) - root_y
+            max_x = max(0, self.winfo_width() - chooser.winfo_reqwidth() - 4)
+            max_y = max(0, self.winfo_height() - chooser.winfo_reqheight() - 4)
+            chooser.place(
+                x=max(4, min(local_x, max_x)),
+                y=max(4, min(local_y, max_y)),
+            )
+            chooser.lift()
+
+            # Bind only after the original badge click is over. Subsequent
+            # clicks outside the chooser dismiss it; clicks on chooser buttons
+            # remain normal independent clicks and can be released safely.
+            def close_on_outside_click(event) -> None:
+                widget = getattr(event, "widget", None)
+                if widget is None or not self._widget_is_inside(widget, chooser):
+                    self._close_roster_role_menu()
+
+            self._roster_role_menu_click_binding_id = self.bind(
+                "<ButtonPress-1>", close_on_outside_click, add="+"
+            )
+            self._roster_role_menu_escape_binding_id = self.bind(
+                "<Escape>", lambda _event: self._close_roster_role_menu(), add="+"
+            )
+
+        self._roster_role_menu_after_id = self.after(ROLE_MENU_POST_DELAY_MS, post_chooser)
 
     def _set_selected_roster_role(self, role: str):
         if self.selected_roster_key:
@@ -7146,8 +7220,11 @@ class AdvancedOptimizerApp(OptimizerApp):
         self.current_job_kind = ""
         self._help_window: Optional[HelpBook] = None
         self._bug_report_window: Optional[BugReportDialog] = None
-        self._roster_role_menu: Optional[tk.Menu] = None
+        self._roster_role_menu: Optional[tk.Frame] = None
         self._roster_role_menu_after_id: Optional[str] = None
+        self._roster_role_menu_buttons: Dict[str, tk.Button] = {}
+        self._roster_role_menu_click_binding_id: Optional[str] = None
+        self._roster_role_menu_escape_binding_id: Optional[str] = None
         super().__init__()
         self.bind_all("<F1>", lambda _event: self.show_help(), add="+")
         self.bind_all("<Control-Shift-B>", lambda _event: self.show_bug_report(), add="+")
@@ -8917,7 +8994,7 @@ PACKAGING_SMOKE_TEST_FLAG = "--packaging-smoke-test"
 
 
 def _smoke_test_companion_role_menu(app: AdvancedOptimizerApp) -> None:
-    """Exercise the frozen role chooser through a complete press/release/select cycle."""
+    """Exercise the frozen role chooser through independent click interactions."""
     probe = tk.Canvas(app, width=8, height=8, highlightthickness=0)
     probe.place(x=2, y=2)
     app.update_idletasks()
@@ -8941,18 +9018,28 @@ def _smoke_test_companion_role_menu(app: AdvancedOptimizerApp) -> None:
     while app._roster_role_menu is None and time.monotonic() < deadline:
         app.update()
         time.sleep(0.01)
-    menu = app._roster_role_menu
-    if menu is None or not menu.winfo_exists() or not menu.winfo_ismapped():
-        raise RuntimeError("Companion role menu did not remain open after click release.")
-    if menu.index("end") != len(EQUIPPED_ROLES) - 1:
-        raise RuntimeError("Companion role menu does not contain every role choice.")
+    chooser = app._roster_role_menu
+    if chooser is None or not chooser.winfo_exists() or not chooser.winfo_ismapped():
+        raise RuntimeError("Companion role chooser did not remain open after click release.")
+    if set(app._roster_role_menu_buttons) != set(EQUIPPED_ROLES):
+        raise RuntimeError("Companion role chooser does not contain every role choice.")
 
-    menu.invoke(EQUIPPED_ROLES.index("Main"))
-    app.update_idletasks()
+    # This must be a fresh normal click, not a click-and-hold drag from the
+    # badge. Generate the button press and release directly on the Main button.
+    main_button = app._roster_role_menu_buttons["Main"]
+    main_button.update_idletasks()
+    click_x = max(1, main_button.winfo_width() // 2)
+    click_y = max(1, main_button.winfo_height() // 2)
+    main_button.event_generate("<Motion>", x=click_x, y=click_y, warp=True)
+    app.update()
+    main_button.event_generate("<ButtonPress-1>", x=click_x, y=click_y)
+    app.update()
+    main_button.event_generate("<ButtonRelease-1>", x=click_x, y=click_y)
+    app.update()
     if str(app.roster_vars[key]["role"].get()) != "Main":
-        raise RuntimeError("Companion role menu did not apply the selected role.")
+        raise RuntimeError("Companion role chooser did not apply a normal click selection.")
     if app._roster_role_menu is not None:
-        raise RuntimeError("Companion role menu did not clean up after selection.")
+        raise RuntimeError("Companion role chooser did not clean up after selection.")
     probe.destroy()
 
 

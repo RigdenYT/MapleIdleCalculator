@@ -1,0 +1,16 @@
+MAPLESTORY IDLE OPTIMIZER 2.6.10 — PERSISTENT ROLE CHOOSER FIX
+================================================================
+
+PROBLEM
+The delayed native Tk menu still behaved as a press-and-hold menu on the affected
+Linux/Tk environment. Releasing the badge click closed it, and dragging to an
+option did not activate a selection.
+
+FIX
+- Replaced tk.Menu entirely with an in-window Frame containing ordinary buttons.
+- Opening and selecting are now two independent clicks.
+- The chooser stays visible until selection, Cancel, Escape, a second badge open,
+  or an outside click.
+- The packaged GUI smoke test performs a normal press/release on the Main button.
+
+Optimizer calculations and saved account/build formats are unchanged.

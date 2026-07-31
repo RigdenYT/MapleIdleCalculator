@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Release helper included with source package 2.6.10; APP_VERSION remains the source of truth.
 set -Eeuo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
