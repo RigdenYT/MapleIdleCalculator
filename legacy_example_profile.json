@@ -1,0 +1,91 @@
+{
+  "profile_version": 3,
+  "app_version": "1.4.1",
+  "stats": {
+    "character_class": "Night Lord",
+    "character_level": 120,
+    "attack": 1000000.0,
+    "total_main_stat": 0.0,
+    "current_main_stat_pct": 0.0,
+    "flat_attack_scaling_pct": 0.0,
+    "damage": 250.0,
+    "stat_prop_damage": 500.0,
+    "crit_rate": 80.0,
+    "crit_damage": 180.0,
+    "attack_speed": 111.8,
+    "min_damage": 130.0,
+    "max_damage": 254.5,
+    "normal_damage": 300.0,
+    "boss_damage": 404.5,
+    "basic_attack_damage": 100.0,
+    "skill_damage": 160.0,
+    "basic_attack_share": 30.0,
+    "status_damage": 50.0,
+    "status_uptime": 50.0,
+    "damage_amp": 10.0,
+    "final_damage": 20.0,
+    "defense_pen": 30.0,
+    "accuracy": 50.0
+  },
+  "target": {
+    "content_mode": "Boss",
+    "normal_weight": 50.0,
+    "target_defense": 0.0,
+    "target_evasion": 0.0,
+    "use_accuracy_approximation": false
+  },
+  "companions": [
+    {
+      "uid": "example_hero_epic",
+      "name": "Hero",
+      "rarity": "Epic",
+      "level": 100,
+      "effect_type": "max_damage",
+      "effect_value": 54.5,
+      "main_bonus": 0.0,
+      "equipped_role": "Sub",
+      "source": "formula",
+      "notes": "Example data only"
+    },
+    {
+      "uid": "example_ice_epic",
+      "name": "Ice/Lightning",
+      "rarity": "Epic",
+      "level": 100,
+      "effect_type": "normal_damage",
+      "effect_value": 54.5,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Example data only"
+    },
+    {
+      "uid": "example_bow_epic",
+      "name": "Bowmaster",
+      "rarity": "Epic",
+      "level": 100,
+      "effect_type": "attack_speed",
+      "effect_value": 54.5,
+      "main_bonus": 0.0,
+      "equipped_role": "Sub",
+      "source": "formula",
+      "notes": "Example data only"
+    },
+    {
+      "uid": "example_nl_epic",
+      "name": "Night Lord",
+      "rarity": "Epic",
+      "level": 100,
+      "effect_type": "boss_damage",
+      "effect_value": 54.5,
+      "main_bonus": 0.0,
+      "equipped_role": "Main",
+      "source": "formula",
+      "notes": "Example data only"
+    }
+  ],
+  "total_slots": 3,
+  "top_results": 10,
+  "stats_include_equipped_companions": true,
+  "stat_sources": {}
+}

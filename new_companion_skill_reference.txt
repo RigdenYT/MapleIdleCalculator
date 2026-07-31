@@ -1,0 +1,76 @@
+Rare:
+
+Nightwalker:
+Skill 1: Throws shurikens in front to deal 26% damage to 3 targets 2 times
+Skill 2: When attacking, deals 20% additional damage to the target and decreases attack by 15% for 3sec with a 30% change
+
+WindArcher:
+Skill 1: Fires a wind infused arrow to deal 26% damage to 3 targets in front 2 times
+Skill 2: Increases the companion and players attack by 8%
+
+Epic:
+
+Nightwalker:
+Skill 1: throws shurikens to deal 40% damage to 5 targets in front 3 times
+Skill 2: Throws a penetrating shurken to deal 160% damage to 7 targets in front. After a short delay, an explosion occurs along the path to deal 240% damage to 7 nearby targets. Targets damaged by this skill are stunned for 1 second (cooldown 14sec)
+Skill 3: When attacking , deals 50% additional damage to target and decreases attack by 20% for 3 sec with a 30% change
+Skill 4:When attacking, deals 60% additional damage to the target and recovers the players hp by 1% with a 50% chance (cooldown 1sec)
+
+WindArcher:
+Skill 1: Fires a volley of arrows to deal 40% damage to 5 targets in front 3 times
+Skill 2: Fires an arrow that spirals along the winds path to deal 180% damage to 8 targets in front 2 times. and stuns them for 1.2 sec (19 sec cooldown)
+Skill 3: Increases the companion and players attack by 12%
+Skill 4: When the skill is activated, creates 1 spirit arrow
+
+Unique:
+
+Nightwalker:
+Skill 1: Throws shurikens to deal 80% damage to 6 targets in front 5 times
+skill 2: Throws a penetrating shuriken to deal 360% damage to 7 targets in front. After a short delay, an explosion occurs along the path to deal 540% damage to 7 nearby targets. Targets damaged by this skill are stunned for 1 sec. (14 sec cooldown)
+Skill 3: Increases the players attack by 40% and decreases damage taken by 15% for 8 sec (21 second cooldown)
+Skill 4: When attacking, deals 150% additional damage to the target and decreases attack by 25% for 3 seconds with a 30% chance.
+Skill 5: When attacking, deals 180% additional damage to the target and recovers the players hp by 1% with a 50% chance (1 second cooldown)
+Skill 6: When the companion activates their skill, increases the players attack speed by 5% for 2 sec. This stacks up to 5 times.
+Skill 7: Increases the companions final damage by 25%
+Skill 8: Increases the companions final damage by 25%
+Skill 9: Increases the companions final damage by 25%
+
+WindArcher:
+Skill 1: Creates a powerful gust using the emerald condensed with the power of wind as a medium to deal 80% damage to 6 nearby targets 5 times.
+Skill 2: Fires an arrow that spirals along the winds path to deal 600% damage to 8 targets in front 2 times and stuns them for 1.2 sec. (cooldown 19 sec)
+Skill 3: Fires two arrows to strike the same target to deal 390% and 840% damage respectively. The target hit by the second arrow takes 25% increased damage for 8 seconds. (cooldown 18 seconds)
+Skill 4: Increases the companion and the players attack by 15%
+Skill 5: When a skill is activated, create 2 spirit arrows (2 sec cooldown)
+Skill 6: Increases the companions final damage by 15%
+Skill 7: Increases the companions final damage by 25%
+Skill 8: Increases the companions final damage by 25%
+Skill 9: Increases the companions final damage by 25%
+
+Legendary:
+
+Nightwalker:
+Skill 1: Throws shurikens to deal 290% damage to 6 targets in front 5 times
+skill 2: Throws a penetrating shuriken to deal 1400% damage to 7 targets in front. After a short delay, an explosion occurs along the path to deal 2100% damage to 7 nearby targets. Targets damaged by this skill are stunned for 1 sec. (14 sec cooldown)
+Skill 3: Increases the players attack by 40% and decreases damage taken by 15% for 8 sec (21 second cooldown)
+Skill 4: Increases the players final damage by 10% for 15 sec. Removes 3 most recently inflicted debuffs if the player is inflicted with a status effect (The debuff removal effect activates once per duration) (Cooldown 23 seconds)
+Skill 5: When attacking, deals 500% additional damage to the target and decreases attack by 30% for 3 seconds with a 30% chance.
+Skill 6: When attacking, deals 600% additional damage to the target and recovers the players hp by 1% with a 50% chance (1 second cooldown)
+Skill 7: When the companion activates their skill, increases the players attack speed by 5% for 2 sec. This stacks up to 5 times.
+Skill 8: When Attacking, deals 800% additional damage to the target and decreases hp recovery by 20% for 5 sec with a 30% chance
+Skill 9: Increases the companions final damage by 25%
+Skill 10: Increases the companions final damage by 25%
+Skill 11: Increases the companions final damage by 25%
+
+WindArcher:
+
+Skill 1: Creates a powerful gust using the emerald condensed with the power of wind as a medium to deal 290% damage to 6 nearby targets 5 times.
+Skill 2: Fires an arrow that spirals along the winds path to deal 2300% damage to 8 targets in front 2 times and stuns them for 1.2 sec. (cooldown 19 sec)
+Skill 3: Fires two arrows to strike the same target to deal 1550% and 3450% damage respectively. The target hit by the second arrow takes 25% increased damage for 8 seconds. (cooldown 18 seconds)
+Skill 4: Increases the companion and the players attack by 15%
+Skill 5: Fires a storm of arrows 13 times. Arrows deal 780% damage to 4 targets in front and fire faster with higher attack speed. If there are no enemies in range when the skill is used, moves towards the nearest enemy. [Chapter boss] Every time the arrows are fired, it creates 2 spirit arrows.
+Skill 6: When a skill is activated, create 2 spirit arrows (2 sec cooldown)
+Skill 7: Increases the companions final damage by 15%
+Skill 8: When attacking, fires a giant arrow with a 35% chance, dealing 750% damage to 5 targets in front. [Chapter boss] Every time the arrow is fired, creates 2 spirit arrows.
+Skill 9: Increases the companions final damage by 25%
+Skill 10: Increases the companions final damage by 25%
+Skill 11: Increases the companions final damage by 25%

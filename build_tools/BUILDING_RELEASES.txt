@@ -1,0 +1,45 @@
+MAPLESTORY IDLE OPTIMIZER 2.6.6 — RELEASE BUILD NOTES
+======================================================
+
+The same source is used for both operating systems, but each executable must be
+built on its target operating system.
+
+LINUX
+-----
+1. Install Python 3, Tk, Tesseract, and the English Tesseract language data on
+   the build computer.
+2. Run:
+       ./build_tools/build_linux.sh
+3. Test the generated -onedir build first.
+4. Test screenshot import on a computer that does NOT rely on system Tesseract.
+5. Then distribute the single-file build from dist/.
+
+WINDOWS
+-------
+1. Install 64-bit Python 3 with Tcl/Tk.
+2. Install a 64-bit Tesseract distribution on the build computer. Testers will
+   not need it; the staging script embeds its runtime files.
+3. Double-click build_tools\build_windows.bat or run it from Command Prompt.
+4. Test the generated -onedir build first.
+5. Test screenshot import on a Windows account without Tesseract on PATH.
+6. Then distribute the single-file EXE from dist\.
+
+TESSERACT OVERRIDES
+-------------------
+- Set TESSERACT_HOME on Windows to the folder containing tesseract.exe.
+- Set MAPLE_IDLE_TESSERACT to an exact executable path on either platform.
+- Set TESSDATA_PREFIX when the English trained data is in a nonstandard folder.
+
+RELEASE SMOKE TEST
+------------------
+- Launch without a terminal or Python installed.
+- Verify the Fire/Poison Legendary application icon.
+- Create a new account and build, save, close, and reopen it.
+- Enter companion ownership, levels, Main/Sub roles, and switch builds.
+- Import all required Stat Info screenshots and review imported values.
+- Optimize a team and run robustness ranges.
+- Open Help and generate a diagnostic bug-report ZIP.
+- Force no errors, then confirm no crash log is created.
+- Confirm errors that do occur are written under the per-user crash_logs folder.
+
+The first external release may trigger Windows SmartScreen because it is unsigned.

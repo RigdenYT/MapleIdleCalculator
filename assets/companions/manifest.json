@@ -1,0 +1,368 @@
+{
+  "Hero::Common": {
+    "file": "hero__common.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Hero::Rare": {
+    "file": "hero__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Hero::Epic": {
+    "file": "hero__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Hero::Unique": {
+    "file": "hero__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Hero::Legendary": {
+    "file": "hero__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Paladin::Rare": {
+    "file": "paladin__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Paladin::Epic": {
+    "file": "paladin__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Paladin::Unique": {
+    "file": "paladin__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Paladin::Legendary": {
+    "file": "paladin__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Dark Knight::Rare": {
+    "file": "dark_knight__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Dark Knight::Epic": {
+    "file": "dark_knight__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Dark Knight::Unique": {
+    "file": "dark_knight__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Dark Knight::Legendary": {
+    "file": "dark_knight__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Ice/Lightning::Common": {
+    "file": "ice_lightning__common.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Ice/Lightning::Rare": {
+    "file": "ice_lightning__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Ice/Lightning::Epic": {
+    "file": "ice_lightning__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Ice/Lightning::Unique": {
+    "file": "ice_lightning__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Ice/Lightning::Legendary": {
+    "file": "ice_lightning__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Fire/Poison::Rare": {
+    "file": "fire_poison__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Fire/Poison::Epic": {
+    "file": "fire_poison__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Fire/Poison::Unique": {
+    "file": "fire_poison__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Fire/Poison::Legendary": {
+    "file": "fire_poison__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bishop::Rare": {
+    "file": "bishop__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bishop::Epic": {
+    "file": "bishop__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bishop::Unique": {
+    "file": "bishop__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bishop::Legendary": {
+    "file": "bishop__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bowmaster::Common": {
+    "file": "bowmaster__common.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bowmaster::Rare": {
+    "file": "bowmaster__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bowmaster::Epic": {
+    "file": "bowmaster__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bowmaster::Unique": {
+    "file": "bowmaster__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Bowmaster::Legendary": {
+    "file": "bowmaster__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Marksman::Rare": {
+    "file": "marksman__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Marksman::Epic": {
+    "file": "marksman__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Marksman::Unique": {
+    "file": "marksman__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Marksman::Legendary": {
+    "file": "marksman__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Lord::Rare": {
+    "file": "night_lord__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Lord::Epic": {
+    "file": "night_lord__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Lord::Unique": {
+    "file": "night_lord__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Lord::Legendary": {
+    "file": "night_lord__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Shadower::Common": {
+    "file": "shadower__common.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Shadower::Rare": {
+    "file": "shadower__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Shadower::Epic": {
+    "file": "shadower__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Shadower::Unique": {
+    "file": "shadower__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Shadower::Legendary": {
+    "file": "shadower__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Buccaneer::Common": {
+    "file": "buccaneer__common.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Buccaneer::Rare": {
+    "file": "buccaneer__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Buccaneer::Epic": {
+    "file": "buccaneer__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Buccaneer::Unique": {
+    "file": "buccaneer__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Buccaneer::Legendary": {
+    "file": "buccaneer__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Corsair::Rare": {
+    "file": "corsair__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Corsair::Epic": {
+    "file": "corsair__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Corsair::Unique": {
+    "file": "corsair__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Corsair::Legendary": {
+    "file": "corsair__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Walker::Rare": {
+    "file": "night_walker__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Walker::Epic": {
+    "file": "night_walker__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Walker::Unique": {
+    "file": "night_walker__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Night Walker::Legendary": {
+    "file": "night_walker__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Wind Archer::Rare": {
+    "file": "wind_archer__rare.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Wind Archer::Epic": {
+    "file": "wind_archer__epic.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Wind Archer::Unique": {
+    "file": "wind_archer__unique.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  },
+  "Wind Archer::Legendary": {
+    "file": "wind_archer__legendary.png",
+    "placeholder": false,
+    "source": "user sidebar screenshot; shared clean portrait per companion",
+    "framing": "contained-96px"
+  }
+}

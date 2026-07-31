@@ -1,0 +1,29 @@
+PLAYER-PROVIDED EQUIP-EFFECT CHECKPOINTS
+========================================
+
+Bishop
+- Rare Lv. 6: Attack 300
+- Epic Lv. 3: Skill Damage 2.4%
+- Unique locked/base panel: Skill Damage 4%
+- Legendary locked/base panel: Skill Damage 8%
+
+Paladin
+- Rare Lv. 5: Attack 280
+- Epic Lv. 3: Basic Attack Damage 2.4%
+- Unique locked/base panel: Basic Attack Damage 4%
+- Legendary locked/base panel: Basic Attack Damage 8%
+
+Buccaneer
+- Rare Lv. 5: Attack 280
+- Epic Lv. 2: Main Stat 3.3%
+- Unique locked/base panel: Main Stat 6%
+- Legendary locked/base panel: Main Stat 12%
+
+Corsair
+- Rare Lv. 6: Attack 300
+- Epic Lv. 3: Critical Damage 3.6%
+- Unique locked/base panel: Critical Damage 6%
+- Legendary locked/base panel: Critical Damage 12%
+
+These checkpoints are used by the regression tests for the built-in level
+families. Locked Unique/Legendary panels were treated as level-1 base values.

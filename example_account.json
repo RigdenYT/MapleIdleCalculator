@@ -1,0 +1,283 @@
+{
+  "account_version": 1,
+  "app_version": "2.1.0",
+  "character_class": "Fire/Poison Arch Mage",
+  "character_level": 64,
+  "companions": [
+    {
+      "uid": "hero_epic",
+      "name": "Hero",
+      "rarity": "Epic",
+      "level": 3,
+      "effect_type": "max_damage",
+      "effect_value": 6.0,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "ice_epic",
+      "name": "Ice/Lightning",
+      "rarity": "Epic",
+      "level": 3,
+      "effect_type": "normal_damage",
+      "effect_value": 6.0,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "fire_epic",
+      "name": "Fire/Poison",
+      "rarity": "Epic",
+      "level": 4,
+      "effect_type": "crit_rate",
+      "effect_value": 3.9,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "bow_epic",
+      "name": "Bowmaster",
+      "rarity": "Epic",
+      "level": 4,
+      "effect_type": "attack_speed",
+      "effect_value": 6.5,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "marks_epic",
+      "name": "Marksman",
+      "rarity": "Epic",
+      "level": 2,
+      "effect_type": "status_damage",
+      "effect_value": 8.8,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "nightlord_epic",
+      "name": "Night Lord",
+      "rarity": "Epic",
+      "level": 3,
+      "effect_type": "boss_damage",
+      "effect_value": 6.0,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "shadower_epic",
+      "name": "Shadower",
+      "rarity": "Epic",
+      "level": 2,
+      "effect_type": "min_damage",
+      "effect_value": 5.5,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "bishop_epic",
+      "name": "Bishop",
+      "rarity": "Epic",
+      "level": 3,
+      "effect_type": "skill_damage",
+      "effect_value": 2.4,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "paladin_epic",
+      "name": "Paladin",
+      "rarity": "Epic",
+      "level": 3,
+      "effect_type": "basic_attack_damage",
+      "effect_value": 2.4,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "corsair_epic",
+      "name": "Corsair",
+      "rarity": "Epic",
+      "level": 3,
+      "effect_type": "crit_damage",
+      "effect_value": 3.6,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    },
+    {
+      "uid": "wind_epic",
+      "name": "Wind Archer",
+      "rarity": "Epic",
+      "level": 1,
+      "effect_type": "boss_damage",
+      "effect_value": 5.0,
+      "main_bonus": 0.0,
+      "equipped_role": "Not equipped",
+      "source": "formula",
+      "notes": "Built-in level formula"
+    }
+  ],
+  "total_slots": 4,
+  "top_results": 20,
+  "builds": [
+    {
+      "name": "Farming",
+      "stats": {
+        "character_class": "Fire/Poison Arch Mage",
+        "character_level": 64,
+        "attack": 1216000.0,
+        "total_main_stat": 5676,
+        "current_main_stat_pct": 6,
+        "flat_attack_scaling_pct": 0,
+        "damage": 87.3,
+        "stat_prop_damage": 56.8,
+        "crit_rate": 26.599999999999998,
+        "crit_damage": 50.9,
+        "attack_speed": 44.671,
+        "min_damage": 98.0,
+        "max_damage": 127.0,
+        "normal_damage": 10.5,
+        "boss_damage": 6.0,
+        "basic_attack_damage": 15.0,
+        "skill_damage": 0.0,
+        "basic_attack_share": 50,
+        "status_damage": 0.0,
+        "status_uptime": 0,
+        "damage_amp": 0.0,
+        "final_damage": 19.999999999999996,
+        "defense_pen": 0.0,
+        "accuracy": 87.8
+      },
+      "target": {
+        "content_mode": "Normal farming",
+        "normal_weight": 50.0,
+        "target_defense": 0.0,
+        "target_evasion": 0.0,
+        "use_accuracy_approximation": false
+      },
+      "current_roles": {
+        "ice_epic": "Main",
+        "bow_epic": "Sub",
+        "shadower_epic": "Sub",
+        "fire_epic": "Sub"
+      },
+      "stats_include_equipped_companions": true,
+      "stat_sources": {
+        "basic_attack_share": "uncovered",
+        "status_uptime": "uncovered",
+        "current_main_stat_pct": "manual",
+        "flat_attack_scaling_pct": "manual"
+      },
+      "main_options": {
+        "mode": "Automatic",
+        "locked_main_uid": ""
+      },
+      "sensitivity": {
+        "basic_attack_min": 30.0,
+        "basic_attack_max": 70.0,
+        "basic_attack_steps": 5,
+        "status_uptime_min": 0.0,
+        "status_uptime_max": 75.0,
+        "status_uptime_steps": 4,
+        "vary_target_defense": false,
+        "target_defense_min": 0.0,
+        "target_defense_max": 0.0,
+        "target_defense_steps": 1,
+        "vary_target_evasion": false,
+        "target_evasion_min": 0.0,
+        "target_evasion_max": 0.0,
+        "target_evasion_steps": 1
+      }
+    },
+    {
+      "name": "Boss",
+      "stats": {
+        "character_class": "Fire/Poison Arch Mage",
+        "character_level": 64,
+        "attack": 1216000.0,
+        "total_main_stat": 5676,
+        "current_main_stat_pct": 6,
+        "flat_attack_scaling_pct": 0,
+        "damage": 87.3,
+        "stat_prop_damage": 56.8,
+        "crit_rate": 22.7,
+        "crit_damage": 54.5,
+        "attack_speed": 44.671,
+        "min_damage": 92.5,
+        "max_damage": 133.0,
+        "normal_damage": 4.5,
+        "boss_damage": 12.0,
+        "basic_attack_damage": 15.0,
+        "skill_damage": 0.0,
+        "basic_attack_share": 50,
+        "status_damage": 0.0,
+        "status_uptime": 0,
+        "damage_amp": 0.0,
+        "final_damage": 19.999999999999996,
+        "defense_pen": 0.0,
+        "accuracy": 87.8
+      },
+      "target": {
+        "content_mode": "Boss",
+        "normal_weight": 50.0,
+        "target_defense": 0.0,
+        "target_evasion": 0.0,
+        "use_accuracy_approximation": false
+      },
+      "current_roles": {
+        "nightlord_epic": "Main",
+        "hero_epic": "Sub",
+        "bow_epic": "Sub",
+        "corsair_epic": "Sub"
+      },
+      "stats_include_equipped_companions": true,
+      "stat_sources": {
+        "basic_attack_share": "uncovered",
+        "status_uptime": "uncovered",
+        "current_main_stat_pct": "manual",
+        "flat_attack_scaling_pct": "manual"
+      },
+      "main_options": {
+        "mode": "Automatic",
+        "locked_main_uid": ""
+      },
+      "sensitivity": {
+        "basic_attack_min": 30.0,
+        "basic_attack_max": 70.0,
+        "basic_attack_steps": 5,
+        "status_uptime_min": 0.0,
+        "status_uptime_max": 75.0,
+        "status_uptime_steps": 4,
+        "vary_target_defense": false,
+        "target_defense_min": 0.0,
+        "target_defense_max": 0.0,
+        "target_defense_steps": 1,
+        "vary_target_evasion": false,
+        "target_evasion_min": 0.0,
+        "target_evasion_max": 0.0,
+        "target_evasion_steps": 1
+      }
+    }
+  ],
+  "active_build": "Farming"
+}
