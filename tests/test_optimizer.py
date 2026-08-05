@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import math
+import pytest
 import sys
 from pathlib import Path
 
@@ -584,3 +585,1525 @@ def test_release_builds_run_frozen_startup_smoke_tests():
     assert linux_text.count("--packaging-smoke-test") >= 1
     assert windows_text.count("--packaging-smoke-test") >= 2
     assert "xvfb" in workflow_text
+
+
+
+def test_advanced_worker_queue_poll_without_terminal_message_initializes_followup_flag():
+    """Regression for Optimize Team crash when a poll finds no terminal message."""
+
+    class DummyButton:
+        def __init__(self):
+            self.states = []
+
+        def configure(self, **kwargs):
+            self.states.append(kwargs)
+
+    class FakeApp:
+        def __init__(self):
+            self.worker = None
+            self.worker_queue = opt.queue.Queue()
+            self.optimize_button = DummyButton()
+            self.cancel_button = DummyButton()
+            self.analysis_states = []
+            self.current_job_kind = "optimize"
+
+        def _set_analysis_buttons(self, state):
+            self.analysis_states.append(state)
+
+    app = FakeApp()
+    opt.AdvancedOptimizerApp._poll_worker_queue(app)
+
+    assert app.optimize_button.states[-1] == {"state": "normal"}
+    assert app.cancel_button.states[-1] == {"state": "disabled"}
+    assert app.analysis_states[-1] == "normal"
+    assert app.current_job_kind == ""
+
+def test_hero_power_ability_tables_and_inverse_sources():
+    assert opt.APP_VERSION == "3.0.0"
+    assert len(opt.ABILITY_RANGES["Main Stat"]) == 6
+    assert opt.ABILITY_RANGES["Attack Speed"]["Unique"] == (7, 9)
+    assert opt.ABILITY_REROLL_COST[2][3] == 75
+    stats = opt.CharacterStats(attack_speed=40.0, defense_pen=35.0)
+    original = opt.copy.deepcopy(stats)
+    opt._apply_ability_line(stats, "Attack Speed", 10.0)
+    opt._apply_ability_line(stats, "Defense Penetration", 12.0)
+    restored = opt._remove_ability_lines(stats, [("Attack Speed", 10.0), ("Defense Penetration", 12.0)])
+    assert math.isclose(restored.attack_speed, original.attack_speed, rel_tol=1e-9, abs_tol=1e-9)
+    assert math.isclose(restored.defense_pen, original.defense_pen, rel_tol=1e-9, abs_tol=1e-9)
+
+
+def test_hero_power_account_round_trip():
+    state = {"stage": "4", "tokens": "217", "unlocked_slots": "3", "lines": [{"stat": "Attack Speed", "value": "8.8"}]}
+    account = opt.AccountProfile(hero_power=state)
+    loaded = opt.account_from_dict(opt.account_to_dict(account))
+    assert loaded.hero_power == state
+
+
+def test_hero_power_is_modularized_and_reexported():
+    source_text = MODULE_PATH.read_text(encoding="utf-8")
+    assert "from maple_optimizer.hero_power.data import" in source_text
+    assert "hero_power_ui.build_tab(self, COLORS)" in source_text
+    assert "ABILITY_RANGES: Dict" not in source_text
+    for relative in (
+        "maple_optimizer/hero_power/data.py",
+        "maple_optimizer/hero_power/models.py",
+        "maple_optimizer/hero_power/engine.py",
+        "maple_optimizer/hero_power/ui.py",
+    ):
+        assert (ROOT / relative).is_file()
+
+
+def test_tier_progression_returns_n_ranked_picks_for_every_tier():
+    stats = opt.CharacterStats(
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=50.0,
+        crit_rate=70.0,
+        crit_damage=100.0,
+        attack_speed=30.0,
+        boss_damage=100.0,
+        defense_pen=30.0,
+        accuracy=100.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    recommendations = opt.hero_power_engine.optimize_all_tiers(
+        stats,
+        target,
+        3,
+        2,
+        opt._score_character,
+        opt.combine_diminishing,
+        beam_width=32,
+    )
+    assert [item.tier for item in recommendations] == list(opt.ABILITY_TIERS)
+    assert all(len(item.lines) == 3 for item in recommendations)
+    assert recommendations[3].tier == "Unique"
+    assert recommendations[3].available
+    assert not recommendations[4].available
+    assert not recommendations[5].available
+    for recommendation in recommendations:
+        assert [line.slot_number for line in recommendation.lines] == [1, 2, 3]
+        assert recommendation.maximum_total_gain_pct >= recommendation.minimum_total_gain_pct
+        assert all(line.maximum_value >= line.minimum_value for line in recommendation.lines)
+
+
+def test_tier_progression_allows_duplicate_best_lines():
+    stats = opt.CharacterStats(attack=100000.0, damage=0.0)
+    target = opt.TargetProfile(content_mode="Boss")
+    recommendation = opt.hero_power_engine.optimize_tier(
+        stats,
+        target,
+        "Rare",
+        3,
+        2,
+        opt._score_character,
+        opt.combine_diminishing,
+        beam_width=32,
+    )
+    assert len(recommendation.lines) == 3
+    assert len({line.stat_name for line in recommendation.lines}) < 3
+
+
+def test_action_planner_compares_one_and_two_slot_rerolls():
+    stats = opt.CharacterStats(
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=50.0,
+        crit_rate=70.0,
+        crit_damage=100.0,
+        attack_speed=30.0,
+        boss_damage=100.0,
+        defense_pen=30.0,
+        accuracy=100.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    lines = [
+        opt.hero_power_engine.AbilityLine("Damage", 15.0, True, "Unique", 1),
+        opt.hero_power_engine.AbilityLine("Max HP", 15000.0, True, "Unique", 2),
+        opt.hero_power_engine.AbilityLine("Max MP", 200.0, True, "Unique", 3),
+    ]
+    plan = opt.hero_power_engine.analyze_reroll_strategies(
+        stats,
+        lines,
+        target,
+        5,
+        50000,
+        0,
+        0,
+        0.25,
+        2,
+        opt._score_character,
+        opt.combine_diminishing,
+        samples_per_level=3000,
+    )
+    assert plan.recommended_strategy is not None
+    assert plan.recommended_strategy.rerolled_slots == (2, 3)
+    assert {len(strategy.rerolled_slots) for strategy in plan.strategies} == {1, 2}
+    assert plan.recommended_strategy.budget_success_probability_pct > 99.0
+    assert plan.recommended_strategy.expected_gain_per_1000_medals > 0.0
+
+
+def test_action_planner_accounts_for_reconfiguration_level_progression():
+    stats = opt.CharacterStats(attack=100000.0, damage=40.0)
+    target = opt.TargetProfile(content_mode="Boss")
+    lines = [
+        opt.hero_power_engine.AbilityLine("Max HP", 15000.0, False, "Unique", 1),
+        opt.hero_power_engine.AbilityLine("Max MP", 200.0, False, "Unique", 2),
+        opt.hero_power_engine.AbilityLine("Evasion", 10.0, False, "Unique", 3),
+    ]
+    plan = opt.hero_power_engine.analyze_reroll_strategies(
+        stats,
+        lines,
+        target,
+        2,
+        24000,
+        0,
+        11000,
+        0.10,
+        1,
+        opt._score_character,
+        opt.combine_diminishing,
+        samples_per_level=2000,
+    )
+    assert plan.recommended_strategy is not None
+    assert plan.recommended_strategy.attempts_affordable > 0
+    assert plan.recommended_strategy.ending_reconfiguration_level >= 3
+
+
+def test_replacement_thresholds_report_practical_accept_values():
+    stats = opt.CharacterStats(
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=50.0,
+        crit_rate=70.0,
+        crit_damage=100.0,
+        attack_speed=30.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    lines = [
+        opt.hero_power_engine.AbilityLine("Attack Speed", 8.8, True, "Unique", 1),
+        opt.hero_power_engine.AbilityLine("Attack Speed", 7.2, True, "Unique", 2),
+        opt.hero_power_engine.AbilityLine("Main Stat", 400.0, True, "Unique", 3),
+    ]
+    thresholds = opt.hero_power_engine.estimate_replacement_thresholds(
+        stats,
+        lines,
+        3,
+        target,
+        2,
+        0.25,
+        opt._score_character,
+        opt.combine_diminishing,
+        limit=20,
+    )
+    assert thresholds
+    assert any(item.stat_name == "Damage" for item in thresholds)
+    assert all(item.minimum_accepted_value <= item.maximum_value for item in thresholds)
+    assert all(item.estimated_probability_per_rolled_slot > 0 for item in thresholds)
+
+
+def test_action_planner_simulation_is_deterministic():
+    stats = opt.CharacterStats(attack=100000.0, damage=40.0)
+    target = opt.TargetProfile(content_mode="Boss")
+    lines = [
+        opt.hero_power_engine.AbilityLine("Max HP", 15000.0, False, "Unique", 1),
+        opt.hero_power_engine.AbilityLine("Main Stat", 400.0, False, "Unique", 2),
+    ]
+    args = (
+        stats,
+        lines,
+        target,
+        3,
+        10000,
+        1000,
+        0,
+        0.25,
+        2,
+        opt._score_character,
+        opt.combine_diminishing,
+    )
+    first = opt.hero_power_engine.analyze_reroll_strategies(*args, samples_per_level=1500)
+    second = opt.hero_power_engine.analyze_reroll_strategies(*args, samples_per_level=1500)
+    assert first == second
+
+
+def test_action_planner_reports_top_three_budget_probability():
+    stats = opt.CharacterStats(
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=50.0,
+        crit_rate=70.0,
+        crit_damage=100.0,
+        attack_speed=30.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    lines = [
+        opt.hero_power_engine.AbilityLine("Attack Speed", 8.8, True, "Unique", 1),
+        opt.hero_power_engine.AbilityLine("Attack Speed", 7.2, True, "Unique", 2),
+        opt.hero_power_engine.AbilityLine("Main Stat", 400.0, True, "Unique", 3),
+    ]
+    plan = opt.hero_power_engine.analyze_reroll_strategies(
+        stats,
+        lines,
+        target,
+        2,
+        23495,
+        0,
+        0,
+        0.25,
+        2,
+        opt._score_character,
+        opt.combine_diminishing,
+        samples_per_level=2500,
+    )
+    strategy = plan.recommended_strategy
+    assert strategy is not None
+    assert len(strategy.top_success_patterns) >= 3
+    assert 0.0 < strategy.top_three_first_attempt_probability_pct
+    assert strategy.top_three_first_attempt_probability_pct <= strategy.first_attempt_success_probability_pct
+    assert strategy.top_three_first_attempt_probability_pct <= strategy.top_three_budget_probability_pct
+    assert strategy.top_three_budget_probability_pct <= strategy.budget_success_probability_pct + 1e-9
+    assert all(pattern.probability_per_attempt_pct > 0.0 for pattern in strategy.top_success_patterns[:3])
+
+
+def test_hero_power_ui_uses_concise_action_dashboard():
+    text = (ROOT / "maple_optimizer" / "hero_power" / "ui.py").read_text(encoding="utf-8")
+    assert '"Recommended Action"' in text
+    assert '"STOP REROLLING IF YOU GET ANY OF THESE"' in text
+    assert 'app.hero_plan_chance_var' in text
+    assert 'app.hero_details_frame.grid_remove()' in text
+    assert 'text="Show detailed analysis"' in text
+    assert 'app.ability_approach_var' in text
+    assert 'top_three_expected_attempts_given_success' in text
+
+
+def test_budget_probability_matches_bruteforce_first_success_enumeration():
+    probabilities = (0.2, 0.4, 0.1)
+    costs = (10, 20, 30)
+    metrics = opt.hero_power_engine._accumulate_stopping_metrics(probabilities, costs)
+
+    first_success_probabilities = (
+        0.2,
+        (1.0 - 0.2) * 0.4,
+        (1.0 - 0.2) * (1.0 - 0.4) * 0.1,
+    )
+    brute_probability = sum(first_success_probabilities)
+    brute_attempts = sum(
+        (index + 1) * probability
+        for index, probability in enumerate(first_success_probabilities)
+    ) / brute_probability
+    cumulative_costs = (10, 30, 60)
+    brute_spend = sum(
+        spend * probability
+        for spend, probability in zip(cumulative_costs, first_success_probabilities)
+    ) / brute_probability
+    brute_expected_spend_until_stop = 10 + (1.0 - 0.2) * 20 + (1.0 - 0.2) * (1.0 - 0.4) * 30
+
+    assert_close(metrics.success_probability, brute_probability, label="budget success probability")
+    assert_close(metrics.expected_attempts_given_success, brute_attempts, label="expected attempts")
+    assert_close(metrics.expected_spend_given_success, brute_spend, label="expected spend given success")
+    assert_close(metrics.expected_spend_until_stop, brute_expected_spend_until_stop, label="expected spend until stop")
+
+
+def test_top_three_budget_probability_tracks_same_displayed_outcomes(monkeypatch):
+    engine = opt.hero_power_engine
+    pattern_type = engine._PatternOutcomeEstimate
+    level_type = engine._LevelOutcomeEstimate
+
+    def successful(signature, probability, gain):
+        return opt.hero_power_engine.SuccessfulPattern(
+            signature=signature,
+            description=" + ".join(signature),
+            share_of_successes_pct=probability * 100.0,
+            probability_per_attempt_pct=probability * 100.0,
+            minimum_gain_pct=gain,
+            average_gain_pct=gain,
+            maximum_gain_pct=gain,
+        )
+
+    start_signatures = (("Rare Damage",), ("Epic Damage",), ("Unique Damage",))
+    later_signatures = (("Mystic Damage",), ("Legendary Damage",), ("Mystic Attack Speed",))
+
+    def fake_simulate(_base, _target, _lines, _slots, level, *_args):
+        if level == 1:
+            probabilities = {signature: 0.1 for signature in start_signatures}
+            patterns = tuple(successful(signature, 0.1, 1.0) for signature in start_signatures)
+            success_probability = 0.3
+        else:
+            probabilities = {signature: 0.01 for signature in start_signatures}
+            probabilities.update({signature: 0.3 for signature in later_signatures})
+            patterns = tuple(successful(signature, 0.3, 5.0) for signature in later_signatures)
+            success_probability = 0.93
+        estimates = {
+            signature: pattern_type(signature, probability, 1.0, 1.0, 1.0)
+            for signature, probability in probabilities.items()
+        }
+        return level_type(success_probability, 1.0, 0.0, patterns, estimates)
+
+    monkeypatch.setattr(engine, "_simulate_level_outcomes", fake_simulate)
+    monkeypatch.setattr(engine, "_attempt_schedule", lambda *_args: ((1, 10), (2, 10)))
+
+    stats = opt.CharacterStats(attack=100000.0)
+    lines = [engine.AbilityLine("Max HP", 1200.0, False, "Normal", 1)]
+    plan = engine.analyze_reroll_strategies(
+        stats,
+        lines,
+        opt.TargetProfile(),
+        1,
+        100,
+        0,
+        0,
+        0.1,
+        1,
+        opt._score_character,
+        opt.combine_diminishing,
+        samples_per_level=10,
+    )
+    strategy = plan.recommended_strategy
+    assert strategy is not None
+    # The displayed starting outcomes have 30% on attempt 1 and only 3% on
+    # attempt 2. A changing "top three" would incorrectly use 90% on attempt 2.
+    assert_close(
+        strategy.top_three_budget_probability_pct,
+        (1.0 - (1.0 - 0.30) * (1.0 - 0.03)) * 100.0,
+        label="fixed top-three budget probability",
+    )
+
+
+def test_ability_input_validation_rejects_invalid_slot_data():
+    class Variable:
+        def __init__(self, value):
+            self.value = value
+        def get(self):
+            return self.value
+
+    class App:
+        pass
+
+    app = App()
+    app.ability_line_vars = [
+        {"enabled": Variable(True), "locked": Variable(False)},
+        {"enabled": Variable(False), "locked": Variable(False)},
+    ]
+    invalid_line = opt.hero_power_engine.AbilityLine(
+        "Attack Speed", 99.0, False, "Unique", 1
+    )
+    with pytest.raises(ValueError, match="between 7 and 9"):
+        opt.hero_power_ui._validate_ability_inputs(app, [invalid_line], 1, 2, 1000, 0, 0)
+
+
+def test_planning_approach_changes_recommendation_priority():
+    stats = opt.CharacterStats(
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=50.0,
+        crit_rate=70.0,
+        crit_damage=100.0,
+        attack_speed=30.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    lines = [
+        opt.hero_power_engine.AbilityLine("Attack Speed", 8.8, True, "Unique", 1),
+        opt.hero_power_engine.AbilityLine("Attack Speed", 7.2, True, "Unique", 2),
+        opt.hero_power_engine.AbilityLine("Main Stat", 400.0, True, "Unique", 3),
+    ]
+    common = (
+        stats,
+        lines,
+        target,
+        2,
+        23495,
+        0,
+        0,
+        0.25,
+        2,
+        opt._score_character,
+        opt.combine_diminishing,
+    )
+    conservative = opt.hero_power_engine.analyze_reroll_strategies(
+        *common, optimization_approach="Conservative", samples_per_level=1500
+    )
+    balanced = opt.hero_power_engine.analyze_reroll_strategies(
+        *common, optimization_approach="Balanced", samples_per_level=1500
+    )
+    aggressive = opt.hero_power_engine.analyze_reroll_strategies(
+        *common, optimization_approach="Aggressive", samples_per_level=1500
+    )
+    assert conservative.recommended_strategy is not None
+    assert balanced.recommended_strategy is not None
+    assert aggressive.recommended_strategy is not None
+    assert conservative.recommended_strategy.top_three_budget_probability_pct >= 0.0
+    assert aggressive.recommended_strategy.expected_gain_given_success_pct >= 0.0
+
+
+def test_probability_validation_release_guards_are_present():
+    publisher = (ROOT / "publish_release.sh").read_text(encoding="utf-8")
+    assert "_accumulate_stopping_metrics" in publisher
+    assert "top_three_expected_attempts_given_success" in publisher
+    assert "STOP REROLLING IF YOU GET ANY OF THESE" in publisher
+
+
+
+def test_potential_ocr_parser_reads_supplied_panel_shape():
+    text = """@ Rare ; 1/60
+Potential INT 100
+Options Damage 8%
+Max MP 3%
+"""
+    result = opt.equipment_ui.read_potential_image if False else None
+    from maple_optimizer.equipment.ocr import parse_potential_text
+    parsed = parse_potential_text(text)
+    assert parsed.rarity == "Rare"
+    assert parsed.progress == 1
+    assert parsed.progress_total == 60
+    assert [(line.stat_name, line.value, line.unit) for line in parsed.lines] == [
+        ("INT", 100.0, "flat"),
+        ("Damage", 8.0, "percent"),
+        ("Max MP %", 3.0, "percent"),
+    ]
+
+
+def test_potential_complete_roll_comparison_replaces_all_three_lines():
+    from maple_optimizer.equipment.engine import compare_rolls
+    from maple_optimizer.equipment.models import PotentialLine
+
+    stats = opt.CharacterStats(
+        character_class="Ice/Lightning Arch Mage",
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=8.0,
+        crit_rate=50.0,
+        crit_damage=100.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    current = [
+        PotentialLine("INT", 100.0),
+        PotentialLine("Damage", 8.0),
+        PotentialLine("Max MP %", 3.0),
+    ]
+    candidate = [
+        PotentialLine("INT", 150.0),
+        PotentialLine("Damage", 10.0),
+        PotentialLine("Critical Damage", 5.0),
+    ]
+    result = compare_rolls(stats, target, current, candidate, "INT", opt._score_character)
+    assert result.gain_pct > 0.0
+    assert result.modeled_current_lines == 2
+    assert result.modeled_candidate_lines == 3
+    assert any("Max MP" in warning for warning in result.warnings)
+
+
+def test_potential_observed_budget_probability_math():
+    from maple_optimizer.equipment.engine import chance_with_budget, wilson_interval
+    assert_close(chance_with_budget(0.25, 2), 0.4375, label="potential two-cube chance")
+    low, high = wilson_interval(5, 10)
+    assert 0.0 < low < 0.5 < high < 1.0
+
+
+def test_equipment_state_round_trips_with_account():
+    account = opt.AccountProfile(
+        equipment={
+            "selected_slot": "Cape",
+            "cubes": "67",
+            "slots": {
+                "Cape": {
+                    "rarity": "Rare",
+                    "progress": "1",
+                    "progress_total": "60",
+                    "lines": [
+                        {"stat": "INT", "value": "100", "unit": "flat"},
+                        {"stat": "Damage", "value": "8", "unit": "percent"},
+                        {"stat": "Max MP %", "value": "3", "unit": "percent"},
+                    ],
+                }
+            },
+        }
+    )
+    restored = opt.account_from_dict(opt.account_to_dict(account))
+    assert restored.equipment["selected_slot"] == "Cape"
+    assert restored.equipment["cubes"] == "67"
+    assert restored.equipment["slots"]["Cape"]["rarity"] == "Rare"
+
+
+def test_equipment_potential_tab_and_release_guards_are_present():
+    source = MODULE_PATH.read_text(encoding="utf-8")
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+    publisher = (ROOT / "publish_release.sh").read_text(encoding="utf-8")
+    assert 'text="Equipment Enhancement"' in source
+    assert 'text="Read New Roll"' in ui_text
+    assert 'text="Read Screenshot File"' in ui_text
+    assert "Record Entered Reroll as Current" in ui_text
+    assert "REROLL OCR REVIEW — OLD ROLL UNAVAILABLE" in ui_text
+    assert "normalize_potential_panel" in ui_text
+    assert "KEEP CURRENT" not in ui_text.upper()
+    assert "maple_optimizer/equipment" in publisher
+
+
+def test_potential_ocr_v2_fingerprint_detects_stable_changes():
+    from PIL import Image
+    from maple_optimizer.equipment.ocr import fingerprint_distance, region_fingerprint
+    first = Image.new("RGB", (200, 100), (20, 20, 20))
+    same = Image.new("RGB", (200, 100), (20, 20, 20))
+    changed = Image.new("RGB", (200, 100), (220, 220, 220))
+    assert fingerprint_distance(region_fingerprint(first), region_fingerprint(same)) == 0.0
+    assert fingerprint_distance(region_fingerprint(first), region_fingerprint(changed)) > 50.0
+
+
+def test_reliable_reroll_immediately_replaces_current_state():
+    from types import SimpleNamespace
+    from maple_optimizer.equipment.models import PotentialLine, PotentialOCRResult
+    from maple_optimizer.equipment.potential_rates import PotentialRateProfile
+    from maple_optimizer.equipment.ui import apply_new_ocr_result
+
+    class Var:
+        def __init__(self, value=None):
+            self.value = value
+        def get(self):
+            return self.value
+        def set(self, value):
+            self.value = value
+
+    def row(stat, value, unit="%"):
+        return {"stat": Var(stat), "value": Var(str(value)), "unit": Var(unit)}
+
+    stats = opt.CharacterStats(character_class="Mage", attack=100000.0, damage=1.0)
+    target = opt.TargetProfile(content_mode="Boss")
+    state = {
+        "configured": True, "slot_status": "Unlocked", "rarity": "Mystic",
+        "progress": "0", "progress_total": "0",
+        "lines": [
+            {"stat": "Damage", "value": 1.0, "unit": "percent"},
+            {"stat": "Damage", "value": 0.0, "unit": "percent"},
+            {"stat": "Damage", "value": 0.0, "unit": "percent"},
+        ],
+        "observed_rolls": 0, "observed_improvements": 0,
+        "observed_signatures": [], "reroll_history": [],
+    }
+    app = SimpleNamespace(
+        collect_profile=lambda: SimpleNamespace(stats=stats, target=target),
+        potential_selected_slot_var=Var("Cape"),
+        potential_slots_state={"Cape": state},
+        potential_current_rarity_var=Var("Mystic"),
+        potential_current_progress_var=Var("0"),
+        potential_current_progress_total_var=Var("0"),
+        potential_current_line_vars=[row("Damage", 1), row("Damage", 0), row("Damage", 0)],
+        potential_candidate_rarity_var=Var("Mystic"),
+        potential_candidate_progress_var=Var("0"),
+        potential_candidate_progress_total_var=Var("0"),
+        potential_candidate_line_vars=[row("Damage", 0), row("Damage", 0), row("Damage", 0)],
+        potential_candidate_context_var=Var(""),
+        potential_record_reroll_button_var=Var(""),
+        potential_capture_status_var=Var(""),
+        potential_result_title_var=Var(""),
+        potential_result_detail_var=Var(""),
+        potential_slot_status_var=Var("Unlocked"),
+        potential_cubes_var=Var("3"),
+        potential_min_gain_var=Var("0.25"),
+        potential_auto_deduct_var=Var(True),
+        potential_odds_var=Var(""),
+        potential_exact_odds_text="",
+        potential_rate_profile=PotentialRateProfile(),
+        potential_pending_previous_snapshot=None,
+        potential_pending_reroll_cube_deducted=False,
+        potential_effective_stats_override=None,
+        potential_loading_state=False,
+        potential_last_candidate_signature="",
+        potential_last_comparison=None,
+    )
+    result = PotentialOCRResult(
+        rarity="Mystic", progress=0, progress_total=0,
+        lines=(
+            PotentialLine("Damage", 5.0, "percent"),
+            PotentialLine("Damage", 0.0, "percent"),
+            PotentialLine("Damage", 0.0, "percent"),
+        ),
+        raw_text="synthetic", line_confidences=(1.0, 1.0, 1.0), confidence=1.0,
+    )
+    committed = apply_new_ocr_result(
+        app, result, parse_number=lambda value, **_: float(value),
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage,
+        class_main_stat={"Mage": "INT"}, deduct_cube=True, record_observation=True,
+    )
+    assert committed
+    assert app.potential_current_line_vars[0]["value"].get() == "5"
+    assert app.potential_cubes_var.get() == "2"
+    assert state["observed_rolls"] == 1
+    assert len(state["reroll_history"]) == 1
+    assert "no longer available" in app.potential_result_detail_var.get().lower()
+    assert "NEW CURRENT" in app.potential_result_title_var.get()
+
+
+def test_potential_card_localization_accepts_approximate_region():
+    from PIL import Image, ImageDraw
+    from maple_optimizer.equipment.ocr import (
+        POTENTIAL_CANONICAL_SIZE,
+        locate_potential_panel_bounds,
+        normalize_potential_panel,
+    )
+
+    image = Image.new("RGB", (720, 420), (18, 25, 34))
+    draw = ImageDraw.Draw(image)
+    # Synthetic neutral-charcoal inner option box with generous calibration margins.
+    draw.rectangle((205, 105, 615, 265), fill=(50, 49, 50))
+    bounds = locate_potential_panel_bounds(image)
+    assert bounds is not None
+    left, top, right, bottom = bounds
+    assert left < 205 and top <= 105 and right > 615 and bottom >= 265
+    normalized, warnings, localized = normalize_potential_panel(image)
+    assert localized == bounds
+    assert warnings == ()
+    assert normalized.size == POTENTIAL_CANONICAL_SIZE
+
+
+def test_potential_ocr_validation_rejects_impossible_slot_special():
+    from maple_optimizer.equipment.models import PotentialLine, PotentialOCRResult
+    from maple_optimizer.equipment.ocr import _validate_result
+    result = PotentialOCRResult(
+        rarity="Unique",
+        progress=1,
+        progress_total=333,
+        lines=(
+            PotentialLine("Critical Damage", 20.0),
+            PotentialLine("Damage", 12.0),
+            PotentialLine("INT", 400.0),
+        ),
+        raw_text="",
+        line_confidences=(0.95, 0.95, 0.95),
+        confidence=0.95,
+    )
+    checked = _validate_result(result, equipment_slot="Cape", expected_rarity="Unique")
+    assert checked.confidence < result.confidence
+    assert any("not valid for Cape" in warning for warning in checked.warnings)
+
+
+def test_equipment_priority_ranks_weaker_saved_slot_first():
+    from maple_optimizer.equipment.engine import apply_line, rank_equipment_slots
+    from maple_optimizer.equipment.models import PotentialLine
+    stats = opt.CharacterStats(
+        character_class="Ice/Lightning Arch Mage",
+        attack=100000.0,
+        total_main_stat=10000.0,
+        damage=40.0,
+        crit_rate=60.0,
+        crit_damage=80.0,
+    )
+    target = opt.TargetProfile(content_mode="Boss")
+    glove_lines = [
+        PotentialLine("Critical Damage", 20.0),
+        PotentialLine("Damage", 12.0),
+        PotentialLine("INT", 400.0),
+    ]
+    cape_lines = [
+        PotentialLine("INT", 100.0),
+        PotentialLine("Max MP %", 3.0),
+        PotentialLine("Defense", 30.0),
+    ]
+    for line in glove_lines + cape_lines:
+        apply_line(stats, line, "INT")
+    states = {
+        "Gloves": {
+            "configured": True, "rarity": "Unique", "progress": "20", "progress_total": "333",
+            "lines": [{"stat": line.stat_name, "value": line.value} for line in glove_lines],
+            "observed_rolls": 0, "observed_improvements": 0,
+        },
+        "Cape": {
+            "configured": True, "rarity": "Rare", "progress": "1", "progress_total": "60",
+            "lines": [{"stat": line.stat_name, "value": line.value} for line in cape_lines],
+            "observed_rolls": 0, "observed_improvements": 0,
+        },
+    }
+    priorities = rank_equipment_slots(stats, target, states, "INT", opt._score_character)
+    assert priorities
+    assert priorities[0].slot == "Cape"
+
+
+def test_potential_auto_scan_and_priority_release_guards_are_present():
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+    ocr_text = (ROOT / "maple_optimizer" / "equipment" / "ocr.py").read_text(encoding="utf-8")
+    engine_text = (ROOT / "maple_optimizer" / "equipment" / "engine.py").read_text(encoding="utf-8")
+    publisher = (ROOT / "publish_release.sh").read_text(encoding="utf-8")
+    assert "Start Auto Scan" in ui_text
+    assert "potential_monitor_stable_frames < 3" in ui_text
+    assert "region_fingerprint" in ocr_text
+    assert "rank_equipment_slots" in engine_text
+    assert "potential_auto_scan_button_var" in publisher
+    assert "rank_equipment_slots" in publisher
+
+
+def test_scan_current_potential_saves_baseline_without_counting_reroll():
+    from maple_optimizer.equipment.models import PotentialLine, PotentialOCRResult
+
+    class Var:
+        def __init__(self, value=""):
+            self.value = value
+        def get(self):
+            return self.value
+        def set(self, value):
+            self.value = value
+
+    class App:
+        pass
+
+    app = App()
+    app.potential_selected_slot_var = Var("Cape")
+    app.potential_current_rarity_var = Var("Rare")
+    app.potential_current_progress_var = Var("0")
+    app.potential_current_progress_total_var = Var("60")
+    app.potential_current_line_vars = [
+        {"stat": Var("Damage"), "value": Var("0"), "unit": Var("%")} for _ in range(3)
+    ]
+    app.potential_candidate_rarity_var = Var("Rare")
+    app.potential_candidate_progress_var = Var("0")
+    app.potential_candidate_progress_total_var = Var("60")
+    app.potential_candidate_line_vars = [
+        {"stat": Var("Damage"), "value": Var("0"), "unit": Var("%")} for _ in range(3)
+    ]
+    app.potential_slots_state = {
+        "Cape": {
+            "configured": False,
+            "rarity": "Rare",
+            "progress": "0",
+            "progress_total": "60",
+            "lines": [],
+            "observed_rolls": 12,
+            "observed_improvements": 4,
+            "observed_signatures": ["old"],
+        }
+    }
+    app.potential_last_candidate_signature = "old-candidate"
+    app.potential_last_comparison = object()
+    app.potential_monitor_last_result_signature = ""
+    app.potential_capture_status_var = Var()
+    app.potential_result_title_var = Var()
+    app.potential_result_detail_var = Var()
+    app.potential_odds_var = Var()
+    app.potential_cubes_var = Var("68")
+
+    result = PotentialOCRResult(
+        rarity="Rare",
+        progress=1,
+        progress_total=60,
+        lines=(
+            PotentialLine("INT", 100.0),
+            PotentialLine("Damage", 8.0),
+            PotentialLine("Max MP %", 3.0),
+        ),
+        raw_text="",
+        line_confidences=(0.95, 0.95, 0.95),
+        confidence=0.95,
+    )
+    opt.equipment_ui.apply_scanned_current(app, result)
+
+    state = app.potential_slots_state["Cape"]
+    assert state["configured"] is True
+    assert state["observed_rolls"] == 0
+    assert state["observed_improvements"] == 0
+    assert app.potential_cubes_var.get() == "68"
+    assert app.potential_current_rarity_var.get() == "Rare"
+    assert app.potential_current_progress_var.get() == "1"
+    assert [row["stat"].get() for row in app.potential_current_line_vars] == ["INT", "Damage", "Max MP %"]
+    assert app.potential_result_title_var.get() == "CURRENT POTENTIAL SCANNED"
+
+
+
+def test_primary_stat_flat_and_percent_units_are_distinct_and_scored_differently():
+    from maple_optimizer.equipment.engine import apply_line, roll_signature
+    from maple_optimizer.equipment.models import PotentialLine
+
+    flat = PotentialLine("INT", 6.0, "flat")
+    percent = PotentialLine("INT", 6.0, "percent")
+    assert flat != percent
+    assert flat.display_value == "6"
+    assert percent.display_value == "6%"
+    assert roll_signature("Rare", [flat]) != roll_signature("Rare", [percent])
+
+    flat_stats = opt.CharacterStats(character_class="Ice/Lightning Arch Mage", total_main_stat=1000.0)
+    percent_stats = opt.CharacterStats(character_class="Ice/Lightning Arch Mage", total_main_stat=1000.0)
+    assert apply_line(flat_stats, flat, "INT") is True
+    assert apply_line(percent_stats, percent, "INT") is True
+    assert_close(flat_stats.total_main_stat, 1006.0, label="flat INT Potential")
+    assert_close(percent_stats.total_main_stat, 1060.0, label="percent INT Potential")
+    assert_close(percent_stats.current_main_stat_pct, 6.0, label="percent INT tracking")
+
+
+def test_potential_ocr_preserves_primary_stat_percent_symbol():
+    from maple_optimizer.equipment.ocr import parse_potential_text
+
+    parsed = parse_potential_text("""Rare 1/60
+INT 6%
+INT 400
+Damage 8%
+""")
+    assert parsed.complete
+    assert [(line.stat_name, line.value, line.unit) for line in parsed.lines] == [
+        ("INT", 6.0, "percent"),
+        ("INT", 400.0, "flat"),
+        ("Damage", 8.0, "percent"),
+    ]
+
+
+def test_potential_line_save_migration_defaults_legacy_primary_stats_to_flat():
+    from maple_optimizer.equipment import ui as equipment_ui
+    from maple_optimizer.equipment.models import PotentialLine
+
+    migrated = equipment_ui._deserialize_lines([
+        {"stat": "INT", "value": "6"},
+        {"stat": "Damage", "value": "8"},
+        {"stat": "Max MP %", "value": "3"},
+    ])
+    assert [line.unit for line in migrated] == ["flat", "percent", "percent"]
+    serialized = [equipment_ui._serialize_line(line) for line in migrated]
+    assert serialized[0]["unit"] == "flat"
+    assert serialized[1]["unit"] == "percent"
+
+
+def test_potential_unit_release_guards_are_present():
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+    engine_text = (ROOT / "maple_optimizer" / "equipment" / "engine.py").read_text(encoding="utf-8")
+    ocr_text = (ROOT / "maple_optimizer" / "equipment" / "ocr.py").read_text(encoding="utf-8")
+    publisher = (ROOT / "publish_release.sh").read_text(encoding="utf-8")
+    assert '"unit": line.unit' in ui_text
+    assert 'line.stat_name}:{line.unit}' in engine_text
+    assert 'POTENTIAL_UNIT_PERCENT if percent else POTENTIAL_UNIT_FLAT' in ocr_text
+    assert 'Potential unit-aware save format is missing' in publisher
+
+
+def test_current_potential_scan_release_guards_are_present():
+    source = MODULE_PATH.read_text(encoding="utf-8")
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+    publisher = (ROOT / "publish_release.sh").read_text(encoding="utf-8")
+    assert "def scan_current_potential(self):" in source
+    assert "def scan_current_and_start_auto_scan(self):" in source
+    assert 'text="Scan Current Potential"' in ui_text
+    assert 'text="Scan Current & Start Auto Scan"' in ui_text
+    assert "process_current_image" in ui_text
+    assert "baseline_fingerprint=fingerprint" in ui_text
+    assert "Scan Current Potential" in publisher
+
+
+def test_potential_damage_label_never_expands_to_boss_damage():
+    from maple_optimizer.equipment import ocr as potential_ocr
+
+    stat, confidence = potential_ocr._canonical_stat_with_confidence("Damage", True)
+    assert stat == "Damage"
+    assert confidence == 1.0
+
+    stat, confidence = potential_ocr._canonical_stat_with_confidence("Boss Monster Damage", True)
+    assert stat == "Boss Monster Damage"
+    assert confidence == 1.0
+
+    # A noisy plain-Damage read must not invent the missing Boss modifier.
+    stat, _confidence = potential_ocr._canonical_stat_with_confidence("Darnage", True)
+    assert stat == "Damage"
+
+
+def test_potential_decimal_loss_recovery_rejects_impossible_rare_45_percent():
+    from maple_optimizer.equipment import ocr as potential_ocr
+
+    value, percent, confidence, warning = potential_ocr._select_numeric_candidate(
+        ["45%"],
+        "Damage",
+        rarity="Rare",
+        equipment_slot="Belt",
+    )
+    assert value == pytest.approx(4.5)
+    assert percent is True
+    assert confidence > 0.0
+    assert "missing decimal" in warning
+
+    direct_value, direct_percent, _confidence, direct_warning = potential_ocr._select_numeric_candidate(
+        ["4.5%"],
+        "Damage",
+        rarity="Rare",
+        equipment_slot="Belt",
+    )
+    assert direct_value == pytest.approx(4.5)
+    assert direct_percent is True
+    assert direct_warning == ""
+
+
+def test_potential_consensus_uses_majority_and_forces_review_on_disagreement():
+    from maple_optimizer.equipment.models import PotentialLine, PotentialOCRResult
+    from maple_optimizer.equipment.ocr import consensus_potential_results
+
+    correct = PotentialOCRResult(
+        rarity="Rare",
+        progress=1,
+        progress_total=60,
+        lines=(
+            PotentialLine("INT", 100, "flat"),
+            PotentialLine("Damage", 4.5, "percent"),
+            PotentialLine("Max MP", 3, "percent"),
+        ),
+        raw_text="correct",
+        line_confidences=(0.90, 0.90, 0.90),
+        confidence=0.90,
+    )
+    same = PotentialOCRResult(
+        rarity=correct.rarity,
+        progress=correct.progress,
+        progress_total=correct.progress_total,
+        lines=correct.lines,
+        raw_text="same",
+        line_confidences=(0.88, 0.89, 0.91),
+        confidence=0.89,
+    )
+    wrong = PotentialOCRResult(
+        rarity="Rare",
+        progress=1,
+        progress_total=60,
+        lines=(
+            PotentialLine("INT", 100, "flat"),
+            PotentialLine("Boss Monster Damage", 45, "percent"),
+            PotentialLine("Max MP", 3, "percent"),
+        ),
+        raw_text="wrong",
+        line_confidences=(0.70, 0.55, 0.70),
+        confidence=0.61,
+    )
+    consensus = consensus_potential_results([correct, wrong, same])
+    assert consensus.lines[1].stat_name == "Damage"
+    assert consensus.lines[1].value == pytest.approx(4.5)
+    assert consensus.confidence >= 0.90
+    assert any("agreed across" in warning for warning in consensus.warnings)
+
+    third = PotentialOCRResult(
+        rarity="Rare",
+        progress=1,
+        progress_total=60,
+        lines=(
+            PotentialLine("LUK", 200, "flat"),
+            PotentialLine("Critical Damage", 7, "percent"),
+            PotentialLine("Defense", 120, "flat"),
+        ),
+        raw_text="third",
+        line_confidences=(0.75, 0.75, 0.75),
+        confidence=0.75,
+    )
+    disagreement = consensus_potential_results([correct, wrong, third])
+    assert disagreement.confidence <= 0.58
+    assert any("disagreed" in warning for warning in disagreement.warnings)
+
+
+def test_potential_slot_status_excludes_locked_and_auto_zero_slots():
+    from maple_optimizer.equipment.engine import slot_eligibility
+
+    zero_state = {
+        "slot_status": "Auto",
+        "configured": False,
+        "lines": [
+            {"stat": "Damage", "value": 0, "unit": "percent"},
+            {"stat": "INT", "value": 0, "unit": "flat"},
+            {"stat": "Defense", "value": 0, "unit": "flat"},
+        ],
+    }
+    eligible, reason = slot_eligibility(zero_state)
+    assert eligible is False
+    assert "all three values are zero" in reason
+
+    configured_state = dict(zero_state)
+    configured_state["configured"] = True
+    configured_state["lines"] = [
+        {"stat": "Damage", "value": 8, "unit": "percent"},
+        {"stat": "INT", "value": 100, "unit": "flat"},
+        {"stat": "Defense", "value": 30, "unit": "flat"},
+    ]
+    eligible, reason = slot_eligibility(configured_state)
+    assert eligible is True
+    assert "auto-detected" in reason
+
+    configured_state["slot_status"] = "Locked"
+    eligible, reason = slot_eligibility(configured_state)
+    assert eligible is False
+    assert reason == "marked locked"
+
+
+def test_loading_equipment_state_preserves_visible_priority_variable_bindings(monkeypatch):
+    from maple_optimizer.equipment import ui as equipment_ui
+
+    class Var:
+        def __init__(self, value=""):
+            self.value = value
+        def get(self):
+            return self.value
+        def set(self, value):
+            self.value = value
+
+    class App:
+        pass
+
+    app = App()
+    app.potential_priority_title_var = Var("old title")
+    app.potential_priority_rows_vars = [Var("old 1"), Var("old 2"), Var("old 3")]
+    app.potential_priority_note_var = Var("old note")
+    title_id = id(app.potential_priority_title_var)
+    row_ids = [id(var) for var in app.potential_priority_rows_vars]
+    note_id = id(app.potential_priority_note_var)
+
+    app.potential_loading_state = False
+    app.potential_slots_state = {}
+    app.potential_capture_region = None
+    app.potential_capture_status_var = Var()
+    app.potential_cubes_var = Var()
+    app.potential_min_gain_var = Var()
+    app.potential_auto_deduct_var = Var()
+    app.potential_auto_scan_var = Var()
+    app.potential_auto_scan_button_var = Var()
+    app.potential_monitor_status_var = Var()
+    app.potential_selected_slot_var = Var("Cape")
+    app._potential_loaded_slot = None
+
+    monkeypatch.setattr(equipment_ui, "stop_auto_monitor", lambda _app: None)
+    monkeypatch.setattr(equipment_ui, "_load_selected_slot", lambda _app: None)
+    monkeypatch.setattr(equipment_ui, "_schedule_priority_refresh", lambda _app, _delay=0: None)
+
+    equipment_ui.apply_state(app, None)
+
+    assert id(app.potential_priority_title_var) == title_id
+    assert [id(var) for var in app.potential_priority_rows_vars] == row_ids
+    assert id(app.potential_priority_note_var) == note_id
+    assert app.potential_priority_title_var.get() == "SCAN CURRENT POTENTIALS TO BUILD A PRIORITY LIST"
+
+
+def test_potential_ocr_priority_patch_release_guards_are_present():
+    data_text = (ROOT / "maple_optimizer" / "equipment" / "data.py").read_text(encoding="utf-8")
+    engine_text = (ROOT / "maple_optimizer" / "equipment" / "engine.py").read_text(encoding="utf-8")
+    ocr_text = (ROOT / "maple_optimizer" / "equipment" / "ocr.py").read_text(encoding="utf-8")
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+
+    assert "_REQUIRED_LABEL_TOKENS" in ocr_text
+    assert "Recovered a likely missing decimal" in ocr_text
+    assert "read_potential_consensus" in ocr_text
+    assert "Save Corrected as Current" in ui_text
+    assert "CURRENT SCAN REVIEW" in ui_text
+    assert "SLOT_STATUS_OPTIONS" in data_text
+    assert "slot_eligibility" in engine_text
+    assert "NO ELIGIBLE POTENTIAL SLOTS YET" in ui_text
+    apply_state_body = ui_text.split("def apply_state", 1)[1].split("def calibrate_capture", 1)[0]
+    assert "tk.StringVar" not in apply_state_body
+
+
+def test_potential_fast_path_uses_four_tesseract_launches(monkeypatch):
+    from PIL import Image
+    from maple_optimizer.equipment import ocr as potential_ocr
+
+    outputs = iter(("Rare 1/60", "INT 100", "Damage 8%", "Max MP 3%"))
+    calls = []
+
+    def fake_run(*_args, **_kwargs):
+        calls.append(1)
+        return next(outputs)
+
+    monkeypatch.setattr(potential_ocr, "_run_tesseract", fake_run)
+    result = potential_ocr.read_potential_image_fast(
+        Image.new("RGB", (860, 260), (30, 30, 30)),
+        Path("tesseract"),
+        equipment_slot="Belt",
+    )
+    assert result.complete
+    assert result.progress == 1
+    assert result.progress_total == 60
+    assert [(line.stat_name, line.value, line.unit) for line in result.lines] == [
+        ("INT", 100.0, "flat"),
+        ("Damage", 8.0, "percent"),
+        ("Max MP %", 3.0, "percent"),
+    ]
+    assert len(calls) == 4
+    assert potential_ocr.potential_result_is_reliable(result)
+
+
+def test_potential_staged_ocr_skips_defensive_reader_for_clean_result(monkeypatch):
+    from PIL import Image
+    from maple_optimizer.equipment import ocr as potential_ocr
+    from maple_optimizer.equipment.models import PotentialLine, PotentialOCRResult
+
+    clean = PotentialOCRResult(
+        rarity="Rare",
+        progress=1,
+        progress_total=60,
+        lines=(
+            PotentialLine("INT", 100, "flat"),
+            PotentialLine("Damage", 8, "percent"),
+            PotentialLine("Max MP", 3, "percent"),
+        ),
+        raw_text="clean",
+        line_confidences=(0.95, 0.95, 0.95),
+        confidence=0.95,
+    )
+    monkeypatch.setattr(potential_ocr, "read_potential_image_fast", lambda *_args, **_kwargs: clean)
+
+    def fail_full(*_args, **_kwargs):
+        raise AssertionError("defensive OCR should not run for a clean fast result")
+
+    monkeypatch.setattr(potential_ocr, "read_potential_image", fail_full)
+    result = potential_ocr.read_potential_staged(
+        [Image.new("RGB", (860, 260), (30, 30, 30))],
+        Path("tesseract"),
+    )
+    assert result.lines == clean.lines
+    assert any("fast four-pass" in warning for warning in result.warnings)
+
+
+def test_potential_ocr_performance_patch_release_guards_are_present():
+    source = MODULE_PATH.read_text(encoding="utf-8")
+    ocr_text = (ROOT / "maple_optimizer" / "equipment" / "ocr.py").read_text(encoding="utf-8")
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+    publisher = (ROOT / "publish_release.sh").read_text(encoding="utf-8")
+    assert "start_manual_live_ocr" in source
+    assert "read_potential_image_fast" in ocr_text
+    assert "potential_result_is_reliable" in ocr_text
+    assert "read_potential_staged" in ocr_text
+    assert 'name="potential-manual-ocr"' in ui_text
+    assert "Potential read completed in" in ui_text
+    assert "read_potential_image_fast" in publisher
+    assert "potential-manual-ocr" in publisher
+
+
+def _synthetic_potential_rate_profile(slot="Cape", rarity="Rare", hit_value=10.0, hit_probability=0.5):
+    from maple_optimizer.equipment.models import PotentialLine
+    from maple_optimizer.equipment.potential_rates import PotentialRateOutcome, PotentialRateProfile
+
+    profile = PotentialRateProfile(source="synthetic configured rates")
+    profile.distributions[(slot, rarity, 1)] = (
+        PotentialRateOutcome(PotentialLine("Damage", 0.0, "percent"), 1.0 - hit_probability),
+        PotentialRateOutcome(PotentialLine("Damage", hit_value, "percent"), hit_probability),
+    )
+    profile.distributions[(slot, rarity, 2)] = (
+        PotentialRateOutcome(PotentialLine("Damage", 0.0, "percent"), 1.0),
+    )
+    profile.distributions[(slot, rarity, 3)] = (
+        PotentialRateOutcome(PotentialLine("Damage", 0.0, "percent"), 1.0),
+    )
+    return profile
+
+
+def test_configured_potential_rate_profile_json_and_csv_roundtrip():
+    from maple_optimizer.equipment.potential_rates import (
+        profile_from_csv,
+        profile_from_dict,
+        profile_to_dict,
+    )
+
+    profile = _synthetic_potential_rate_profile()
+    restored = profile_from_dict(profile_to_dict(profile))
+    assert restored.has_complete_table("Cape", "Rare")
+    assert restored.outcome_count() == 4
+
+    csv_text = """slot,rarity,line,stat,value,unit,probability,source,captured_at
+Cape,Rare,1,Damage,0,percent,50%,test,2026-08-04
+Cape,Rare,1,Damage,10,percent,50%,test,2026-08-04
+Cape,Rare,2,Damage,0,percent,100%,test,2026-08-04
+Cape,Rare,3,Damage,0,percent,100%,test,2026-08-04
+"""
+    csv_profile = profile_from_csv(csv_text)
+    assert csv_profile.has_complete_table("Cape", "Rare")
+    assert csv_profile.source == "test"
+    assert csv_profile.captured_at == "2026-08-04"
+
+
+def test_configured_potential_rate_analysis_matches_exact_enumeration():
+    from maple_optimizer.equipment.models import PotentialLine
+    from maple_optimizer.equipment.potential_rates import analyze_configured_rates
+
+    stats = opt.CharacterStats(attack=100000.0, damage=0.0)
+    target = opt.TargetProfile(content_mode="Boss")
+    current = [
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+    ]
+    analysis = analyze_configured_rates(
+        stats,
+        target,
+        slot="Cape",
+        rarity="Rare",
+        current_lines=current,
+        minimum_gain_pct=1.0,
+        cubes=2,
+        main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage,
+        profile=_synthetic_potential_rate_profile(hit_value=10.0, hit_probability=0.5),
+    )
+    assert_close(analysis.success_probability, 0.5, label="configured next-cube success")
+    assert_close(analysis.chance_with_budget, 0.75, label="configured two-cube success")
+    assert_close(analysis.expected_cubes_to_success, 2.0, label="configured expected cubes")
+    assert_close(analysis.average_gain_on_success, 10.0, label="configured accepted gain")
+    assert_close(analysis.expected_positive_gain_per_cube, 5.0, label="configured expected gain per cube")
+    assert analysis.combination_count == 2
+
+
+def test_irreversible_optimal_stopping_can_make_saving_cubes_rational():
+    from maple_optimizer.equipment.models import PotentialLine
+    from maple_optimizer.equipment.potential_rates import analyze_configured_rates
+
+    # At Mystic there is no future-rarity table dependency. A single cube has
+    # zero expected value, but two cubes are positive because a good first roll
+    # can be kept while a bad first roll can be rerolled once more.
+    profile = _synthetic_potential_rate_profile(
+        "Cape", rarity="Mystic", hit_value=10.0, hit_probability=0.5
+    )
+    stats = opt.CharacterStats(attack=100000.0, damage=5.0)
+    current = [
+        PotentialLine("Damage", 5.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+    ]
+    one_cube = analyze_configured_rates(
+        stats, opt.TargetProfile(content_mode="Boss"), slot="Cape", rarity="Mystic",
+        current_lines=current, minimum_gain_pct=0.1, cubes=1, main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage, profile=profile,
+        include_rank_aware=True,
+    )
+    two_cubes = analyze_configured_rates(
+        stats, opt.TargetProfile(content_mode="Boss"), slot="Cape", rarity="Mystic",
+        current_lines=current, minimum_gain_pct=0.1, cubes=2, main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage, profile=profile,
+        include_rank_aware=True,
+    )
+    assert one_cube.optimal_policy_available
+    assert not one_cube.optimal_should_reroll
+    assert one_cube.optimal_cubes_to_positive_value == 2
+    assert_close(one_cube.optimal_chance_end_worse, 0.5, label="one-cube downside")
+    assert two_cubes.optimal_should_reroll
+    assert two_cubes.optimal_reroll_value_gain_pct > 0.0
+    assert_close(two_cubes.optimal_chance_end_better, 0.75, label="two-cube better chance")
+    assert_close(two_cubes.optimal_chance_end_worse, 0.25, label="two-cube worse chance")
+
+
+def test_configured_potential_priority_includes_irreversible_session_downside():
+    from maple_optimizer.equipment.potential_rates import merge_profiles, rank_slots_by_configured_rates
+
+    profile = merge_profiles(
+        _synthetic_potential_rate_profile("Cape", hit_value=10.0, hit_probability=0.2),
+        _synthetic_potential_rate_profile("Gloves", hit_value=5.0, hit_probability=0.8),
+    )
+    states = {
+        "Cape": {
+            "configured": True,
+            "slot_status": "Unlocked",
+            "rarity": "Rare",
+            "lines": [
+                {"stat": "Damage", "value": 1.0, "unit": "percent"},
+                {"stat": "Damage", "value": 0.0, "unit": "percent"},
+                {"stat": "Damage", "value": 0.0, "unit": "percent"},
+            ],
+        },
+        "Gloves": {
+            "configured": True,
+            "slot_status": "Unlocked",
+            "rarity": "Rare",
+            "lines": [
+                {"stat": "Damage", "value": 1.0, "unit": "percent"},
+                {"stat": "Damage", "value": 0.0, "unit": "percent"},
+                {"stat": "Damage", "value": 0.0, "unit": "percent"},
+            ],
+        },
+    }
+    stats = opt.CharacterStats(attack=100000.0, damage=2.0)
+    rows = rank_slots_by_configured_rates(
+        stats,
+        opt.TargetProfile(content_mode="Boss"),
+        states,
+        minimum_gain_pct=0.25,
+        cubes=20,
+        main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage,
+        profile=profile,
+        eligibility_fn=lambda state: (True, "test"),
+    )
+    # Gloves wins on positive-upside-per-cube alone, but Cape has the better
+    # final-session value once the active final failed roll is included.
+    assert [row.slot for row in rows] == ["Cape", "Gloves"]
+    assert rows[0].expected_positive_gain_per_cube < rows[1].expected_positive_gain_per_cube
+    assert rows[0].expected_final_gain_with_budget > rows[1].expected_final_gain_with_budget
+
+
+def test_configured_rate_profile_rejects_incomplete_probability_totals():
+    from maple_optimizer.equipment.potential_rates import profile_from_csv
+
+    csv_text = """slot,rarity,line,stat,value,unit,probability
+Cape,Rare,1,Damage,10,percent,80%
+Cape,Rare,2,Damage,0,percent,100%
+Cape,Rare,3,Damage,0,percent,100%
+"""
+    with pytest.raises(ValueError, match="not 100%"):
+        profile_from_csv(csv_text)
+
+
+def test_configured_rate_feature_release_guards_are_present():
+    source = MODULE_PATH.read_text(encoding="utf-8")
+    ui_text = (ROOT / "maple_optimizer" / "equipment" / "ui.py").read_text(encoding="utf-8")
+    rates_text = (ROOT / "maple_optimizer" / "equipment" / "potential_rates.py").read_text(encoding="utf-8")
+    assert "def import_potential_configured_rates(self):" in source
+    assert "Import Configured Rates" in ui_text
+    assert "rank_slots_by_configured_rates" in ui_text
+    assert "NEXT IRREVERSIBLE REROLL" in ui_text
+    assert "OPTIMAL STOPPING POLICY" in ui_text
+    assert "def analyze_configured_rates" in rates_text
+    assert "PotentialStoppingCondition" in rates_text
+    assert "_rank_aware_budget_success" in rates_text
+    assert "SUGGESTED PREFERRED-OPTION WATCHLIST" in ui_text
+    assert "FINITE-BUDGET IRREVERSIBLE PLAN" in ui_text
+
+
+def test_potential_cooldown_unit_is_preserved_as_seconds():
+    from maple_optimizer.equipment.models import PotentialLine
+
+    line = PotentialLine("Cooldown Reduction", 1.5, "percent")
+    assert line.unit == "seconds"
+    assert line.display_value == "1.5s"
+
+
+def test_bundled_potential_rates_are_normalized_and_report_missing_coverage():
+    from maple_optimizer.equipment.potential_rates import load_profile
+
+    bundled = ROOT / "assets" / "data" / "maplestory_idle_configured_potential_rates.json"
+    profile = load_profile(bundled)
+    assert profile.completed_tables() == 54
+    assert profile.outcome_count() == 4184
+    assert profile.has_complete_table("Hat", "Epic")
+    assert profile.has_complete_table("Shoes", "Rare")
+    assert profile.missing_lines("Necklace", "Rare") == (1, 2, 3)
+
+    cooldown = profile.distribution("Hat", "Legendary", 2)
+    cooldown_values = {
+        (outcome.line.value, outcome.line.unit)
+        for outcome in cooldown
+        if outcome.line.stat_name == "Cooldown Reduction"
+    }
+    assert cooldown_values == {(1.0, "seconds"), (1.5, "seconds")}
+
+    mystic = profile.distribution("Belt", "Mystic", 1)
+    flat_int = [
+        outcome.line.value
+        for outcome in mystic
+        if outcome.line.stat_name == "INT" and outcome.line.unit == "flat"
+    ]
+    assert flat_int == [1000.0]
+
+
+def test_collector_marked_incomplete_rate_section_is_not_used():
+    from maple_optimizer.equipment.potential_rates import profile_from_dict
+
+    profile = profile_from_dict({
+        "distributions": [{
+            "slot": "Cape",
+            "rarity": "Rare",
+            "line": 1,
+            "complete": False,
+            "reason": "collector confidence was low",
+            "rank_up_probability": 0.03333,
+            "outcomes": [{"stat": "Damage", "value": 8, "unit": "percent", "probability": 1.0}],
+        }],
+    })
+    assert not profile.distribution("Cape", "Rare", 1)
+    assert profile.section_reason("Cape", "Rare", 1) == "collector confidence was low"
+    assert_close(profile.rank_up_probability("Cape", "Rare"), 0.03333, label="stored rank chance")
+
+
+def test_configured_rate_analysis_reports_guaranteed_rank_up_and_next_rarity_preview():
+    from maple_optimizer.equipment.models import PotentialLine
+    from maple_optimizer.equipment.potential_rates import analyze_configured_rates, merge_profiles
+
+    profile = merge_profiles(
+        _synthetic_potential_rate_profile("Cape", "Rare", hit_value=5.0, hit_probability=0.1),
+        _synthetic_potential_rate_profile("Cape", "Epic", hit_value=10.0, hit_probability=0.5),
+    )
+    profile.rank_up_probabilities[("Cape", "Rare")] = 0.05
+    stats = opt.CharacterStats(attack=100000.0, damage=0.0)
+    current = [
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+    ]
+    analysis = analyze_configured_rates(
+        stats,
+        opt.TargetProfile(content_mode="Boss"),
+        slot="Cape",
+        rarity="Rare",
+        current_lines=current,
+        minimum_gain_pct=1.0,
+        cubes=2,
+        main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage,
+        profile=profile,
+        progress=8,
+        progress_total=10,
+    )
+    assert analysis.cubes_to_guaranteed_rank_up == 2
+    assert_close(analysis.chance_to_rank_up_with_budget, 1.0, label="guaranteed rank-up")
+    assert analysis.next_rarity == "Epic"
+    assert_close(analysis.next_rarity_success_probability, 0.5, label="next-rarity success")
+    assert analysis.next_rarity_expected_gain_per_cube > analysis.expected_positive_gain_per_cube
+    assert analysis.cubes_for_50pct_success == 7
+
+
+def test_configured_rate_guidance_produces_watch_conditions_and_exact_examples():
+    from maple_optimizer.equipment.models import PotentialLine
+    from maple_optimizer.equipment.potential_rates import analyze_configured_rates
+
+    stats = opt.CharacterStats(attack=100000.0, damage=0.0)
+    current = [
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+    ]
+    analysis = analyze_configured_rates(
+        stats,
+        opt.TargetProfile(content_mode="Boss"),
+        slot="Cape",
+        rarity="Rare",
+        current_lines=current,
+        minimum_gain_pct=1.0,
+        cubes=10,
+        main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage,
+        profile=_synthetic_potential_rate_profile(hit_value=10.0, hit_probability=0.5),
+        include_guidance=True,
+    )
+    assert analysis.stopping_conditions
+    condition = analysis.stopping_conditions[0]
+    assert condition.stat_name == "Damage"
+    assert condition.minimum_value == 10.0
+    assert_close(condition.precision, 1.0, label="watch condition precision")
+    assert_close(condition.success_coverage, 1.0, label="watch condition success coverage")
+    assert analysis.stopping_condition_coverage > 0.0
+    assert analysis.top_exact_outcomes
+    assert analysis.top_exact_outcomes[0].gain_pct > 0.0
+
+
+def test_rank_aware_budget_models_guaranteed_transition_roll():
+    from maple_optimizer.equipment.models import PotentialLine
+    from maple_optimizer.equipment.potential_rates import analyze_configured_rates, merge_profiles
+
+    rare = _synthetic_potential_rate_profile(
+        "Cape", "Rare", hit_value=0.0, hit_probability=0.0
+    )
+    epic = _synthetic_potential_rate_profile(
+        "Cape", "Epic", hit_value=10.0, hit_probability=1.0
+    )
+    profile = merge_profiles(rare, epic)
+    profile.rank_up_probabilities[("Cape", "Rare")] = 0.0
+    current = [
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+        PotentialLine("Damage", 0.0, "percent"),
+    ]
+    analysis = analyze_configured_rates(
+        opt.CharacterStats(attack=100000.0, damage=0.0),
+        opt.TargetProfile(content_mode="Boss"),
+        slot="Cape",
+        rarity="Rare",
+        current_lines=current,
+        minimum_gain_pct=1.0,
+        cubes=2,
+        main_stat_name="INT",
+        score_fn=lambda candidate, _target: 100.0 + candidate.damage,
+        profile=profile,
+        progress=0,
+        progress_total=2,
+        include_rank_aware=True,
+    )
+    assert_close(analysis.chance_with_budget, 0.0, label="fixed-rarity budget chance")
+    assert_close(analysis.rank_aware_chance_with_budget, 1.0, label="rank-aware budget chance")
+    assert_close(analysis.rank_aware_expected_cubes_to_success, 2.0, label="rank-aware expected first success")

@@ -28,3 +28,8 @@ crash_logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Per-version update notes are intentionally consolidated in README.txt and
+# GitHub-generated release notes. These patterns also block accidental repeats.
+/*_[0-9]*.[0-9]*.[0-9]*.txt
+/*-[0-9]*.[0-9]*.[0-9]*.txt

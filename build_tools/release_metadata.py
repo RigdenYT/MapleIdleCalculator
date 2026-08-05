@@ -15,13 +15,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "maplestory_idle_companion_optimizer.py"
 README = ROOT / "README.txt"
-BUILD_NOTES = ROOT / "build_tools" / "BUILDING_RELEASES.txt"
 WINDOWS_VERSION_FILE = ROOT / "build_tools" / "windows_version_info.txt"
 
 _VERSION_PATTERN = re.compile(
     r'^APP_VERSION\s*=\s*["\'](?P<version>\d+\.\d+\.\d+)["\']\s*$',
     re.MULTILINE,
 )
+
+_LEGACY_UPDATE_NOTE_PATTERN = re.compile(
+    r"^[A-Z0-9][A-Z0-9_-]*[-_]\d+\.\d+\.\d+\.txt$",
+    re.IGNORECASE,
+)
+
+
+def legacy_update_note_files() -> list[Path]:
+    return sorted(
+        path
+        for path in ROOT.iterdir()
+        if path.is_file() and _LEGACY_UPDATE_NOTE_PATTERN.fullmatch(path.name)
+    )
 
 
 def app_version() -> str:
@@ -94,10 +106,12 @@ def validate(version: str) -> None:
             f"README.txt has no 'WHAT CHANGED IN {version}' section."
         )
 
-    notes_text = BUILD_NOTES.read_text(encoding="utf-8")
-    if version not in notes_text.splitlines()[0]:
+    legacy_notes = legacy_update_note_files()
+    if legacy_notes:
         problems.append(
-            f"build_tools/BUILDING_RELEASES.txt title does not identify version {version}."
+            "Legacy per-version update-note files are present: "
+            + ", ".join(path.name for path in legacy_notes)
+            + ". Consolidate release history in README.txt or GitHub release notes."
         )
 
     expected_windows = windows_version_text(version)

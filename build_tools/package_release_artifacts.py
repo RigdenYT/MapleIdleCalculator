@@ -70,10 +70,9 @@ def main() -> int:
         onedir_archive = RELEASE / f"{base}-onedir.tar.gz"
         tar_directory(onedir, onedir_archive)
 
-    readme_target = RELEASE / f"README-{version}-{system}-{arch}.txt"
-    shutil.copy2(ROOT / "README.txt", readme_target)
-
-    checksummed = [copied_onefile, onedir_archive, readme_target]
+    # Keep release assets limited to runnable builds and integrity metadata.
+    # Documentation remains in the repository and GitHub-generated release notes.
+    checksummed = [copied_onefile, onedir_archive]
     checksums = RELEASE / f"SHA256SUMS-{system}-{arch}.txt"
     checksums.write_text(
         "".join(f"{sha256(path)}  {path.name}\n" for path in checksummed),

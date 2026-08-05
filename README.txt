@@ -1,12 +1,12 @@
-MAPLESTORY IDLE COMPANION OPTIMIZER 2.6.10
+MAPLESTORY IDLE COMPANION OPTIMIZER 3.0.0
 ============================================================
 
 OVERVIEW
 --------
 This is a local Python/Tkinter optimizer for MapleStory: Idle RPG companion
-teams. It exhaustively evaluates every valid team made from the companion pages
-you own, using the character statistics and target assumptions entered for the
-active build.
+teams, Hero Power/Ability decisions, and Equipment Potential rolls. It uses the
+character statistics and target assumptions entered for the active build to
+compare complete configurations rather than isolated stat lines.
 
 Version 2.0 reorganizes the program around one shared account with multiple
 content builds. It also adds robustness analysis for uncertain inputs, Main
@@ -17,6 +17,449 @@ No pip packages are required for the optimizer engine itself. Packaged releases
 bundle Python, Pillow, the English Tesseract OCR runtime, portraits, background,
 help images, and other assets. Running directly from source still requires the
 local Python/Tk/Pillow/Tesseract development dependencies described below.
+
+WHAT CHANGED IN 3.0.0
+---------------------
+- Renamed the release to 3.0.0 without changing optimizer calculations, user
+  interface behavior, account compatibility, OCR behavior, or bundled rate data.
+- Removed the accumulated standalone per-version update-note files from the
+  source repository. Release history remains consolidated in this README and in
+  GitHub's automatically generated release notes.
+- Updated the publishing helper to delete legacy versioned note files from an
+  existing checkout before committing, so extracting this package over the
+  current repository removes already-tracked copies on the next push.
+- Added repository validation and ignore rules that prevent new files such as
+  FEATURE_NAME_3.0.1.txt, README_3.0.1.txt, or GITHUB_RELEASES_3.0.1.txt from
+  being committed accidentally.
+- Removed the standalone versioned README copy from GitHub release assets. The
+  Windows/Linux program, diagnostic one-folder archive, and checksums remain.
+
+WHAT CHANGED IN 2.8.9
+---------------------
+- Corrected the Potential reroll workflow to match the game: using a cube
+  permanently replaces the previous three-line result. A reliably OCR-read
+  reroll now becomes the active current Potential immediately; the old result
+  is retained only in session history and is never offered as a selectable
+  "Keep Current" outcome.
+- Low-confidence rerolls now pause automatic monitoring in an explicit active-
+  result review state. Correcting the OCR records that already-active result;
+  it does not pretend the pre-cube roll can be restored or deduct a second cube.
+- Added next-reroll downside reporting: better/equal/worse probabilities, severe
+  loss probability, expected immediate net change, and median complete-roll
+  change. Equipment ranking now includes the downside of the final active failed
+  roll instead of ranking only by positive upside.
+- Added a finite-budget optimal stopping solver. After every irreversible roll,
+  it compares the value of stopping with the expected value of continuing with
+  the remaining cubes, including configured early/guaranteed rarity transitions.
+  It can recommend ROLL, STOP, MOVE TO ANOTHER SLOT, or SAVE TO A LARGER BUDGET.
+- Added end-of-session outcomes under that policy: expected final damage change
+  plus the probabilities of ending better, approximately equal, or worse than
+  the active starting Potential. The policy is risk-neutral and labels utility
+  options that are still unmodeled for direct damage.
+- Reworked Potential capture calibration to accept an approximate box around the
+  full card, automatically locate the charcoal Potential panel inside it,
+  normalize the panel to stable OCR geometry, and show a header/three-line
+  calibration overlay before saving. The same normalization is used by current
+  scans, manual reroll reads, screenshots, fingerprints, and automatic scanning.
+- Added regression coverage for irreversible session ranking, finite-budget
+  stopping behavior, save-until-positive guidance, and approximate-region panel
+  localization.
+
+WHAT CHANGED IN 2.8.8
+---------------------
+- Replaced the bundled Potential probability profile with the corrected in-game
+  export. Hat Epic now has complete Slot 1/2/3 rates, and Shoes Rare line 2 is
+  accepted as complete because its collected outcomes total exactly 100%.
+- Exact configured-rate coverage now includes 54 equipment-slot/rarity tables
+  and 4,184 normalized outcomes. Entirely uncollected equipment slots continue
+  to show visible rate-data warnings rather than borrowing another slot's odds.
+- Added a configured-rate stopping guide for the selected equipment slot. It
+  identifies up to three high-value preferred-option watch conditions, reports
+  how much of the acceptable-roll probability they cover, and shows how often a
+  triggered condition actually corresponds to an acceptable complete roll.
+- Added three representative complete three-line stopping outcomes with their
+  configured exact probability and estimated gain. These are examples rather
+  than a claim that only those exact rolls should be accepted.
+- Added rank-aware cube-budget simulation across early and guaranteed rarity
+  increases. The planner now contrasts fixed-rarity session odds with the odds
+  after following possible rank transitions through the remaining cube budget.
+- The rank-aware simulation tracks first-success timing and explicitly states
+  its transition assumption: a cube that raises rarity draws that same result
+  from the newly reached rarity's Option Rates.
+- Preferred-option targets remain watch conditions, not automatic acceptance
+  rules. The automatic complete-roll checker now decides whether to stop or reroll again after the new result becomes active.
+- Added regression tests for corrected Hat/Shoes coverage, preferred-condition
+  coverage/precision, exact stopping examples, and guaranteed transition-roll
+  budget calculations.
+
+WHAT CHANGED IN 2.8.7
+---------------------
+- Bundled the configured Potential Option Rates collected from the in-game
+  Option Rates tables. Exact odds now work automatically for 52 complete
+  equipment-slot/rarity tables without requiring a manual import.
+- Added visible rate-coverage warnings. Missing unlocked-later equipment slots,
+  Hat Epic, and the uncertain Shoes Rare line-2 table are never guessed. The
+  selected-slot note and Cube Priority diagnostics identify exactly which rate
+  lines still need to be collected.
+- Normalized collector artifacts before bundling: Cooldown Reduction is stored
+  and displayed in seconds, 0.55/1.55 OCR artifacts are corrected to 0.5s/1.5s,
+  Mystic 1,000 flat primary-stat values are restored, and two isolated Rare
+  flat-stat zero reads are corrected to 50.
+- Added rank-up-aware planning. Each exact-rate result now shows early rank-up
+  chance per cube, chance to rank up within the current budget, cubes remaining
+  to the guaranteed rank-up, and expected cubes to rank up.
+- Added a next-rarity preview when the adjoining rarity table is available. The
+  optimizer compares the current saved three-line set against outcomes at the
+  next rarity to identify when pushing the rank has better upside.
+- Added SAVE TO X CUBES guidance for low-probability sessions. Saving does not
+  change the per-cube odds; the recommendation means the current budget is below
+  a 50% chance of reaching the configured stopping threshold in one session.
+- Added PUSH <SLOT> TO <RARITY> guidance when the current budget can guarantee a
+  rank-up and the next-rarity expected upside exceeds the current-rarity return.
+- Bundled rates remain separate from account-specific imported overrides.
+  Clearing imported rates now returns to the bundled baseline rather than
+  deleting the built-in data.
+- Added regression tests for bundled coverage, incomplete-table rejection,
+  cooldown-second units, corrected OCR artifacts, guaranteed rank-up math, and
+  next-rarity odds.
+
+WHAT CHANGED IN 2.8.6
+---------------------
+- Added a configured-rate Potential probability engine. For every equipment
+  slot and rarity with complete line-1, line-2, and line-3 distributions, the
+  optimizer enumerates the full three-line outcome space instead of estimating
+  from slot headroom or a small personal roll sample.
+- Cube Priority can now rank equipment by expected positive damage gain per
+  cube. Each exact-rate row shows the next-cube improvement chance, chance
+  within the entered cube budget, expected cubes to an accepted result,
+  expected damage gain per cube, and average gain when the stopping threshold
+  is met.
+- The original 2.8.6 Roll/Save guidance was superseded in 2.8.9. The selected-
+  slot checker now evaluates irreversible Stop/Continue risk after every OCR-
+  read three-line result.
+- Added JSON and CSV configured-rate profile import, export, validation, merge,
+  and account persistence. A distribution is accepted only when every outcome
+  for that slot/rarity/line is present and its probabilities total 100% within
+  a narrow display-rounding tolerance.
+- Added Export Rate Template and visible coverage diagnostics. Exact analysis
+  activates only for complete imported tables; missing tables continue to use
+  the transparent headroom fallback rather than fabricated probabilities.
+- Exact budget odds currently hold the saved Potential rarity constant. Rank-up
+  transitions during a long cube session are deliberately not modeled until
+  the exact transition behavior and adjoining rarity tables are both available.
+- Added regression tests for profile parsing, probability-total validation,
+  exact three-line enumeration, budget odds, expected cubes, expected gain per
+  cube, and cross-slot ranking.
+
+WHAT CHANGED IN 2.8.5
+---------------------
+- Replaced the always-heavy Potential OCR workflow with a staged fast-first
+  pipeline. A clean panel now uses one Tesseract pass for the header and one
+  pass for each of the three rows, rather than launching every preprocessing
+  variant and repeated-capture check unconditionally.
+- Tightened the normalized row crops so each single-line OCR pass sees only one
+  Potential option. On the supplied test panel, the fast path reads Rare 1/60,
+  INT 100, Damage 8%, and Max MP 3% in four OCR launches.
+- Added confidence-gated fallback behavior. Extra grayscale/threshold passes,
+  second and third captures, and consensus are now used only when the first
+  result is incomplete, implausible, or low-confidence.
+- Moved Scan Current Potential, Scan Current & Start Auto Scan, and Read New
+  Roll onto a dedicated background thread. The Tk interface stays responsive
+  and displays whether the fast or verified OCR path was used plus elapsed
+  time.
+- Updated automatic monitoring to try the same staged reader after a changed
+  panel stabilizes. Clean rerolls no longer trigger full three-image consensus;
+  difficult results retain the defensive validation and review path.
+- Added regression coverage proving that the clean fast path uses exactly four
+  Tesseract launches and does not invoke the defensive reader.
+
+WHAT CHANGED IN 2.8.4
+---------------------
+- Reworked Potential OCR label matching so a plain or slightly noisy Damage
+  read cannot be silently expanded into Boss Monster Damage. Compound damage
+  options now require their distinguishing words, such as Boss, Critical,
+  Final, Normal, Basic, or Skill.
+- Added decimal-preserving value OCR and rarity-aware plausibility checks. When
+  a tiny decimal is lost, an impossible value such as Rare Damage 45% can be
+  recovered as 4.5%; unresolved or conflicting values are sent for review
+  rather than being saved automatically.
+- Added repeated-capture OCR consensus. Current scans and manual reads compare
+  up to three captures, while automatic monitoring waits for three stable
+  frames before accepting a new result. Disagreement lowers confidence and
+  opens an explicit review workflow.
+- Replaced the ambiguous low-confidence fallback with CURRENT SCAN REVIEW and a
+  Save Corrected as Current action. Reviewed current scans never deduct a cube
+  or count as a reroll.
+- Fixed the blank Cube Priority dashboard after creating or loading an account.
+  Account loading now preserves the Tk variables already bound to the visible
+  labels, then recalculates the ranking immediately.
+- Added Slot status controls: Auto, Unlocked, and Locked. Auto ignores an
+  unconfigured slot whose three values are all zero; Locked always excludes a
+  slot from equipment-wide priority. The dashboard now reports eligible,
+  locked, auto-ignored, and incomplete slots instead of failing silently.
+- Cube Priority now refreshes after scans, accepted rolls, current-line edits,
+  rarity/progress changes, slot-status changes, active-build changes, and
+  account loading.
+- Added regression coverage for exact Damage matching, missing-decimal
+  recovery, multi-capture consensus, locked-slot exclusion, and the priority
+  display binding bug.
+
+WHAT CHANGED IN 2.8.3
+---------------------
+- Fixed a serious Potential data-model bug where STR, DEX, INT, and LUK rolls
+  did not preserve whether the value was flat or percentage-based. Values such
+  as INT 6% and INT 6 are now distinct in OCR, saved accounts, displays,
+  comparisons, auto-scan signatures, observed-roll history, and Cube Priority.
+- Added an explicit Flat/% unit selector beside every current and candidate
+  Potential line. OCR fills it automatically, while manual entry can choose the
+  correct unit for ambiguous options such as primary stats, Attack, Max HP, and
+  Max MP.
+- Updated the damage model so a matching primary-stat percentage line applies
+  through Main Stat %, while a flat line continues to add a fixed amount.
+- Added backward-compatible account migration. Legacy unitless primary-stat
+  lines default to flat, matching the behavior of versions through 2.8.2.
+  Historical observed-roll samples are reset for migrated slots because their
+  prior comparisons may have used the wrong unit and their signatures lacked
+  unit information.
+- Added regression tests proving INT 6%, INT 400, and Damage 8% remain distinct
+  through OCR, scoring, signatures, serialization, and legacy migration.
+
+WHAT CHANGED IN 2.8.2
+---------------------
+- Added a dedicated Scan Current Potential action. It OCRs the visible rarity,
+  rank progress, and all three lines directly into the selected equipment
+  slot's saved baseline without deducting a cube or recording a reroll.
+- Added Scan Current & Start Auto Scan. One click saves the current visible
+  roll and starts stable-region monitoring from that exact image, so the next
+  settled change is treated as the first reroll rather than as setup.
+- Current scans clear stale candidate/comparison data, reset observed odds only
+  for the newly established baseline, and refresh the equipment-wide Cube
+  Priority ranking immediately.
+- Low-confidence or incomplete current scans are placed in the editable New
+  Roll fields for review but are not silently saved as the current baseline.
+- Renamed the manual live fallback to Read New Roll and clarified the manual
+  Save Edited Current Lines action.
+- Added regression and release guards for the dedicated current-scan workflow,
+  no-cube/no-observation behavior, and pre-seeded automatic-scan baseline.
+
+WHAT CHANGED IN 2.8.1
+---------------------
+- Rebuilt Potential OCR around fixed subregions instead of reading the whole
+  panel as one paragraph. Rarity/progress and each of the three option rows are
+  read separately with single-line OCR, 4x enlargement, color-aware masks for
+  yellow/white/cyan text, threshold fallbacks, fuzzy label correction, numeric
+  whitelists, and slot-specific validation.
+- Added OCR confidence reporting. Impossible slot-exclusive results and weak
+  row matches are flagged instead of being silently treated as trustworthy.
+- Added automatic Potential change monitoring. After calibration, Start Auto
+  Scan captures only the saved region, establishes a baseline, waits for a
+  changed image to remain stable across two captures, then OCRs and compares the
+  new roll automatically. Cursor/UI-only changes and duplicate parsed results
+  are ignored. Manual Read Live Roll remains available.
+- Automatic monitoring does not deduct a cube or record an observed roll when
+  OCR is incomplete or low-confidence. The parsed fields are still shown for
+  manual correction.
+- Added an equipment-wide Cube Priority dashboard. Once current Potential is
+  saved for multiple slots, the program ranks the top three slots to improve and
+  highlights CUBE THIS NEXT. The transparent headroom ranking combines each
+  saved set's modeled contribution, verified slot-exclusive option value at the
+  current rarity, rank-up progress, and any observed reroll history.
+- Cube Priority is deliberately labeled as a headroom recommendation rather
+  than an official expected-gain-per-cube probability because a stable complete
+  table of per-option roll weights is not bundled.
+- Added verified Potential rank requirements and slot-exclusive values used for
+  validation and headroom analysis.
+- Added regression tests for image-change fingerprints, impossible slot-option
+  rejection, weaker-slot priority, automatic scan/release guards, and backward
+  compatibility with saved equipment state.
+
+WHAT CHANGED IN 2.8.0
+---------------------
+- Added a new Equipment Enhancement top-level tab, beginning with a complete
+  three-line Potential roll checker. Current Potential rarity, rank progress,
+  and three lines are saved independently for every equipment slot.
+- Added one-time capture-region calibration. The user can drag a box around the
+  in-game Potential panel on a live screen capture or saved screenshot, and the
+  normalized region is saved with the account for repeated reads.
+- Added live KDE/Linux-friendly capture using Pillow ImageGrab with a Spectacle
+  command-line fallback, plus a Read Screenshot File fallback for environments
+  where Wayland prevents direct capture.
+- Added local Tesseract OCR for Potential rarity, rank progress, and all three
+  option lines. OCR output is normalized against known in-game option labels and
+  remains editable before the user accepts a result.
+- Added complete-set comparison. Every reroll replaces all three lines, so the
+  engine removes the selected slot's saved current lines from the displayed
+  character state, applies the three new lines together, and reports the new active result versus the immediately previous roll, then recommends STOP or CONTINUE.
+- Added modeled support for flat and percentage Main Stat, flat and percentage
+  Attack, Damage, Final Damage, Critical Rate/Damage, Min/Max Damage, Boss and
+  Normal Monster Damage, Basic/Skill Damage, Attack Speed, Defense Penetration,
+  and Accuracy. Utility or job-specific lines remain visible and are explicitly
+  labeled unmodeled rather than assigned invented damage value.
+- Added current rarity and rank-progress tracking because the whole Potential
+  set can rank up while rerolling. Candidate rarity/progress is read by OCR and
+  is recorded as the active result immediately after a reliable reroll read; review is required only when OCR confidence is low.
+- Added cube tracking with optional automatic one-cube deduction after each live
+  OCR read.
+- Added an observed improvement-rate tracker per equipment slot and saved
+  baseline. It reports the sample success rate, Wilson confidence interval, and
+  the implied chance of at least one improvement within the remaining cube
+  budget. It is explicitly empirical, not presented as an official cube-rate
+  table, and resets when a new baseline is accepted.
+- Added account persistence for all equipment-slot Potential data, capture
+  calibration, cube count, minimum improvement threshold, and observed roll
+  history. Older accounts load with clean default Equipment Enhancement state.
+- Added modular Equipment data, models, engine, OCR, and UI packages under
+  maple_optimizer/equipment rather than expanding the main source file further.
+- Added regression tests for OCR parsing, complete three-line replacement,
+  observed budget probability, account round-tripping, and release guards.
+
+WHAT CHANGED IN 2.7.5
+---------------------
+- Corrected the highlighted top-three budget probability. The planner now
+  selects the three displayed outcome categories once at the starting
+  Reconfiguration Level and tracks those exact same outcomes through every
+  later attempt and level-up. Earlier builds could silently substitute a new
+  top three after Reconfiguration Level changed.
+- Replaced ad hoc repeated-attempt accumulation with a shared first-success
+  calculation that handles changing per-attempt probabilities and costs without
+  double-counting. Added brute-force regression comparisons for success chance,
+  expected attempts, expected Medal spend, and first-success timing.
+- Added expected attempts and expected Medals to obtain one of the displayed
+  top-three outcomes, conditional on succeeding within the available budget.
+- Added accepted improvement ranges and average improvement beside each of the
+  three stopping outcomes. Multi-slot recommendations are explicitly labeled as
+  combined results.
+- Renamed the primary outcome section to STOP REROLLING IF YOU GET ANY OF THESE
+  and added a clear instruction to enter the accepted result and analyze again.
+- Added Conservative, Balanced, and Aggressive planning approaches. Conservative
+  favors success probability, Balanced favors probability-adjusted value per
+  Medal, and Aggressive favors larger accepted improvements.
+- Added validation for missing/extra enabled slots, locked disabled slots,
+  out-of-range values, tier/stat mismatches, tiers unavailable at the entered
+  Reconfiguration Level, impossible level-progress values, and reserves larger
+  than the available Medal total.
+- The chance display is explicitly labeled as an estimate because public data
+  provides exact tier rates but not verified option-type and exact-value weights.
+- Preserved the concise result dashboard, modular Hero Power engine, companion
+  optimizer behavior, and all existing account compatibility.
+
+WHAT CHANGED IN 2.7.4
+---------------------
+- Replaced the Ability planner's default wall-of-text result with a concise
+  decision dashboard. The three primary cards now show the exact slot or slots
+  to reroll, the chance of obtaining one of the three highlighted practical
+  outcomes within the usable Medal budget, and the reroll cost/attempt count.
+- Added a prominent slot strip that separates REROLL slots from KEEP / LOCK
+  slots so the recommended action can be understood without reading the full
+  probability report.
+- Added three ranked outcome rows. They emphasize the three best practical
+  results by probability-adjusted gain, show the minimum acceptable value when
+  rerolling one slot, and display both per-attempt likelihood and average
+  accepted damage improvement.
+- Added explicit top-three probability tracking to the reroll engine. The
+  planner now estimates both the first-attempt chance and the chance across the
+  current Medal budget while accounting for Reconfiguration Level changes.
+- Moved the full strategy comparison, ideal tier report, assumptions, and model
+  diagnostics behind a Show detailed analysis button. Detailed data remains
+  available but no longer overwhelms the primary decision.
+- Added a compact Hero Power next-upgrade callout beneath the Ability action
+  plan.
+- Preserved all companion optimizer behavior and the 2.7.3 Optimize Team crash
+  fix.
+
+WHAT CHANGED IN 2.7.3
+---------------------
+- Fixed an Optimize Team callback crash introduced by the advanced analysis
+  queue handler. Polls that contained only progress updates, or no queued
+  message yet, could reach the automatic-sensitivity check before its flag had
+  been initialized.
+- The follow-up flag is now initialized on every poll and is enabled only after
+  a successful completed team search explicitly requests sensitivity analysis.
+- Added a regression test that exercises the exact empty/non-terminal worker
+  queue path from the submitted Linux crash report.
+- No optimizer formulas, companion data, Hero Power calculations, account data,
+  or saved-profile formats were changed.
+
+WHAT CHANGED IN 2.7.2
+---------------------
+- Reframed the Ability planner around an immediate action plan rather than only
+  showing the theoretical best complete preset. The report now identifies which
+  current slot or slots to reroll next and which remaining slots to lock.
+- Added medal-budget controls for reserved Medals, current progress toward the
+  next Reconfiguration Level, minimum acceptable damage improvement, and the
+  maximum number of slots to compare rerolling at once.
+- Added a deterministic probability simulator that compares every one-slot and
+  two-slot reroll combination by default. It reports first-attempt success, the
+  chance of at least one acceptable improvement within the usable budget,
+  expected medals spent when successful, expected accepted gain, and
+  probability-adjusted gain per 1,000 Medals.
+- Reconfiguration Level progression is modeled during the spending plan. When
+  simulated Medal use reaches the published requirement for the next level,
+  subsequent attempts use the new tier probabilities and reroll price.
+- Added practical keep/reroll classifications for the current preset and
+  one-slot-equivalent acceptance thresholds showing the minimum value needed for
+  each obtainable option to beat the current preset by the selected amount.
+- Added common successful multi-slot roll patterns so a two-slot recommendation
+  shows which combined outcomes most often satisfy the stopping rule.
+- Added separate comparisons for the most Medal-efficient strategy, the safest
+  strategy within the current budget, and the highest-upside successful result.
+- Probability estimates clearly distinguish exact published tier rates, costs,
+  and level requirements from the currently unverified assumption that option
+  types are equally likely within a tier and values are uniformly distributed
+  across the displayed range.
+- Expanded the modular Hero Power engine and typed result models rather than
+  moving the new probability calculations back into the main application file.
+- Added regression tests for one-versus-two-slot strategy selection, level-up
+  progression during rerolls, practical acceptance thresholds, and deterministic
+  simulation output.
+
+WHAT CHANGED IN 2.7.1
+---------------------
+- Replaced the single focused-tier maximum-roll list with a tier-by-tier Ability
+  progression planner covering Normal, Rare, Epic, Unique, Legendary, and
+  Mystic in one report.
+- Added an editable Unlocked Slots field. Every tier now returns exactly that
+  many recommended lines, so the report reflects the player's current Hero
+  Power stage rather than assuming a complete seven-slot endgame preset.
+- Ability recommendations are optimized as complete sets rather than isolated
+  one-line rankings. Duplicate options are allowed, and Attack Speed, Critical
+  Rate, Accuracy, and Defense Penetration are recalculated after each selected
+  line so diminishing returns and caps can change later picks.
+- Every recommended line displays its tier value range, minimum-roll and
+  maximum-roll marginal gain, cumulative gain, and the tier probability at the
+  entered Reconfiguration Level. Tiers not yet available are clearly marked.
+- The focused tier selector remains for reroll-cost planning, but no longer
+  limits the recommendation report to one usually unrealistic rarity.
+- Began the planned codebase modularization. Hero Power tables, typed result
+  models, calculation engine, and Tkinter tab now live under
+  maple_optimizer/hero_power instead of being embedded in the main source file.
+- Preserved compatibility aliases in the main module so existing account files,
+  regression tests, and external imports continue to work.
+- Added regression coverage for all-tier N-slot recommendations, duplicate best
+  lines, module boundaries, account persistence, and the complete GUI startup.
+
+WHAT CHANGED IN 2.7.0
+---------------------
+- Added a new Hero Power & Ability tab with the same MapleStory-inspired card,
+  color, and module styling as the Companion Optimization workspace.
+- Added a synchronized Character Baseline panel. Its entries share the exact
+  same variables as the active build, so edits on either tab remain in parity.
+- Added manual entry for all six Hero Power enhancement rows, including current
+  level, current value, next value, and the Hero Token cost shown in-game.
+- Added personalized next-upgrade rankings using modeled damage gain per Hero
+  Token. Max HP and Defense remain visible as utility upgrades rather than being
+  assigned invented offensive value.
+- Added seven Ability slots for current Stage 8 support, with tier, option,
+  exact value, enabled state, and lock state for every line.
+- Added current-line contribution scoring, target-tier line rankings, exact
+  published reroll costs for Reconfiguration Levels 1-20, available-roll
+  estimates, and published tier probabilities.
+- Added reconstruction of the no-Ability baseline when current Ability lines
+  are already included in Character Stats, including correct inverse handling
+  for diminishing Attack Speed and Defense Penetration sources.
+- Hero Power and Ability planner inputs now save with the account file.
+- This first version intentionally leaves exact option/value roll probability
+  and a complete automatic Hero Power cost table for later validation.
 
 WHAT CHANGED IN 2.6.10
 ----------------------

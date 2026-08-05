@@ -1,10 +1,9 @@
-MAPLESTORY IDLE OPTIMIZER 2.6.10 — RELEASE BUILD NOTES
-======================================================
+MAPLESTORY IDLE OPTIMIZER — RELEASE BUILD NOTES
+================================================
 
 The same source is used for Windows and Linux, but PyInstaller must run on the
 target operating system. GitHub Actions is the recommended release path because
-it provides a clean Windows runner and a clean Linux runner from one Linux-hosted
-repository.
+it provides clean Windows and Linux runners from one repository.
 
 GITHUB ACTIONS — RECOMMENDED
 ----------------------------
@@ -19,24 +18,18 @@ Manual run:
 - Download the Windows and Linux artifacts from the completed run.
 
 Tagged release:
-- Ensure APP_VERSION and README identify the intended version.
+- Ensure APP_VERSION and the current README changelog entry identify the release.
 - Commit and push the source.
-- Push a matching tag, for example:
-
-      git tag v2.6.10
-      git push origin v2.6.10
+- Push a tag matching APP_VERSION, for example v3.0.0.
 
 The workflow rejects a tag that does not exactly match APP_VERSION. A successful
 tagged run publishes a GitHub Release containing both platforms automatically.
-See GITHUB_RELEASES.txt for first-time repository setup and future-release steps.
+See GITHUB_RELEASES.txt for repository setup and future-release steps.
 
 LOCAL LINUX BUILD
 -----------------
 1. Install Python 3, Tk, Tesseract, and English Tesseract language data.
-2. Run:
-
-       ./build_tools/build_linux.sh
-
+2. Run ./build_tools/build_linux.sh
 3. Test the generated one-folder archive first.
 4. Test screenshot import without relying on a different system Tesseract.
 5. Distribute the single-file executable from release/ after testing.
@@ -44,12 +37,9 @@ LOCAL LINUX BUILD
 LOCAL WINDOWS BUILD
 -------------------
 1. Install 64-bit Python 3 with Tcl/Tk.
-2. Install a 64-bit Tesseract distribution on the build computer. Testers will
-   not need it; the staging script embeds its runtime files.
-3. Run:
-
-       build_tools\build_windows.bat
-
+2. Install a 64-bit Tesseract distribution on the build computer. Testers do not
+   need it because the staging script embeds its runtime files.
+3. Run build_tools\build_windows.bat
 4. Test the generated one-folder archive first.
 5. Test screenshot import on a Windows account without Tesseract on PATH.
 6. Distribute the single-file EXE from release/ after testing.
@@ -62,22 +52,23 @@ create upload-ready files under release/. Each platform's release directory cont
 
 - the final single-file executable;
 - a compressed one-folder diagnostic build;
-- a versioned README;
 - a platform-specific SHA256SUMS file.
+
+No standalone per-version README or update-note TXT is added to release assets.
 
 VERSION METADATA
 ----------------
 APP_VERSION in maplestory_idle_companion_optimizer.py is the version source of
 truth. The PyInstaller specification reads it directly. Before every build,
-release_metadata.py generates Windows version information and verifies the
-README/build notes.
+release_metadata.py generates Windows version information, verifies the current
+README entry, and rejects legacy root-level per-version update-note files.
 
 Useful commands:
 
     python build_tools/release_metadata.py --print-version
     python build_tools/release_metadata.py --write-windows-version
     python build_tools/release_metadata.py --check
-    python build_tools/release_metadata.py --check-tag v2.6.9
+    python build_tools/release_metadata.py --check-tag v3.0.0
 
 TESSERACT OVERRIDES
 -------------------
@@ -96,11 +87,10 @@ RELEASE SMOKE TEST
 - Enter companion ownership, levels, Main/Sub roles, and switch builds.
 - Import all required Stat Info screenshots and review imported values.
 - Optimize a team and run robustness ranges.
+- Test Hero Power and Equipment Potential planning, OCR, and reroll workflows.
 - Open Help and generate a diagnostic bug-report ZIP.
 - Confirm expected use creates no crash log.
 - Confirm a forced error is written under the per-user crash_logs folder.
-- Verify the published file against SHA256SUMS if transfer corruption is
-  suspected.
+- Verify published files against SHA256SUMS if transfer corruption is suspected.
 
-The first external Windows release may trigger SmartScreen because it is
-unsigned.
+The first external Windows release may trigger SmartScreen because it is unsigned.

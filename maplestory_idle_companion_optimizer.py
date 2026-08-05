@@ -60,9 +60,27 @@ except Exception:  # pragma: no cover - optional dependency
     ImageGrab = None  # type: ignore[assignment]
     ImageTk = None  # type: ignore[assignment]
 
+MODULE_ROOT = Path(__file__).resolve().parent
+if str(MODULE_ROOT) not in sys.path:
+    sys.path.insert(0, str(MODULE_ROOT))
+
+from maple_optimizer.hero_power.data import (
+    ABILITY_ESTIMATE_MODEL,
+    ABILITY_MEDALS_TO_NEXT,
+    ABILITY_RANGES,
+    ABILITY_REROLL_COST,
+    ABILITY_STATS,
+    ABILITY_TIER_PROBABILITIES,
+    ABILITY_TIERS,
+    HERO_POWER_STATS,
+)
+from maple_optimizer.hero_power import engine as hero_power_engine
+from maple_optimizer.hero_power import ui as hero_power_ui
+from maple_optimizer.equipment import ui as equipment_ui
+
 
 APP_NAME = "MapleStory Idle Companion Optimizer"
-APP_VERSION = "2.6.10"
+APP_VERSION = "3.0.0"
 APP_SLUG = "maplestory-idle-optimizer"
 PROFILE_VERSION = 3
 
@@ -1091,6 +1109,33 @@ def merge_stat_screenshots(
         screenshot_count=len(screenshot_paths),
         observed_labels=tuple(sorted(observed_labels)),
     )
+
+
+# ---------------------------------------------------------------------------
+# Hero Power compatibility wrappers
+#
+# The implementation lives in maple_optimizer.hero_power.  These aliases keep
+# older account files, tests, and third-party imports compatible with the
+# original single-file API while allowing the planner to evolve independently.
+# ---------------------------------------------------------------------------
+
+def _ability_source_factor(value: float, cap: float) -> float:
+    return hero_power_engine.ability_source_factor(value, cap)
+
+def _remove_diminishing_sources(total: float, sources: Sequence[float], cap: float) -> float:
+    return hero_power_engine.remove_diminishing_sources(total, sources, cap)
+
+def _apply_flat_main_stat(stats: CharacterStats, delta: float) -> None:
+    hero_power_engine.apply_flat_main_stat(stats, delta)
+
+def _apply_ability_line(stats: CharacterStats, stat_name: str, value: float) -> None:
+    hero_power_engine.apply_ability_line(stats, stat_name, value, combine_diminishing)
+
+def _remove_ability_lines(stats: CharacterStats, lines: Sequence[Tuple[str, float]]) -> CharacterStats:
+    return hero_power_engine.remove_ability_lines(stats, lines)
+
+def _score_character(stats: CharacterStats, target: TargetProfile) -> float:
+    return evaluate_team(stats, target, [])[0].score_selected
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -6469,6 +6514,8 @@ class AccountProfile:
     top_results: int = 20
     builds: List[BuildProfile] = field(default_factory=lambda: [BuildProfile()])
     active_build: str = "Default Build"
+    hero_power: Dict[str, object] = field(default_factory=dict)
+    equipment: Dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -6584,6 +6631,8 @@ def account_to_dict(account: AccountProfile) -> Dict[str, object]:
         "top_results": account.top_results,
         "builds": [build_to_dict(b) for b in account.builds],
         "active_build": account.active_build,
+        "hero_power": copy.deepcopy(account.hero_power),
+        "equipment": copy.deepcopy(account.equipment),
     }
 
 
@@ -6614,6 +6663,8 @@ def account_from_dict(payload: Dict[str, object], fallback_name: str = "Imported
             top_results=int(payload.get("top_results", 20)),
             builds=builds,
             active_build=active,
+            hero_power=copy.deepcopy(dict(payload.get("hero_power", {}))),
+            equipment=copy.deepcopy(dict(payload.get("equipment", {}))),
         )
 
     legacy = profile_from_dict(payload)
@@ -6642,6 +6693,8 @@ def account_from_dict(payload: Dict[str, object], fallback_name: str = "Imported
         top_results=legacy.top_results,
         builds=[build],
         active_build=name,
+        hero_power={},
+        equipment={},
     )
 
 
@@ -7269,6 +7322,12 @@ class AdvancedOptimizerApp(OptimizerApp):
         self.sensitivity_summary_var = tk.StringVar(value="Run sensitivity analysis to test uncertain assumptions.")
         self.main_summary_var = tk.StringVar(value="Compare the best Sub team for every possible Main companion.")
         self.upgrade_summary_var = tk.StringVar(value="Rank the modeled benefit of each companion's next level.")
+        hero_power_ui.initialize_state(self)
+        equipment_ui.initialize_state(self)
+        equipment_ui.load_bundled_configured_rates(
+            self,
+            resource_path("assets", "data", "maplestory_idle_configured_potential_rates.json"),
+        )
         self.main_mode_var.trace_add("write", lambda *_: self._update_main_mode_fields())
 
     def _build_ui(self):
@@ -7280,6 +7339,10 @@ class AdvancedOptimizerApp(OptimizerApp):
         self.notebook.pack(fill="both", expand=True, padx=16, pady=(10, 8))
         self.workspace_tab = ttk.Frame(self.notebook, style="App.TFrame")
         self.notebook.add(self.workspace_tab, text="Companion Optimization")
+        self.hero_power_tab = ttk.Frame(self.notebook, style="App.TFrame")
+        self.notebook.add(self.hero_power_tab, text="Hero Power & Ability")
+        self.equipment_tab = ttk.Frame(self.notebook, style="App.TFrame")
+        self.notebook.add(self.equipment_tab, text="Equipment Enhancement")
         self.workspace_tab.columnconfigure(0, weight=1)
         self.workspace_tab.rowconfigure(0, weight=1)
 
@@ -7312,6 +7375,8 @@ class AdvancedOptimizerApp(OptimizerApp):
         self._build_workspace_companion_widget()
         self._build_workspace_planning_widget()
         self._build_workspace_results_widget()
+        self._build_hero_power_tab()
+        self._build_equipment_tab()
 
         self.workspace_canvas.bind("<Configure>", self._schedule_workspace_layout, add="+")
         self.workspace_canvas.bind_all("<MouseWheel>", self._workspace_mousewheel, add="+")
@@ -7319,6 +7384,182 @@ class AdvancedOptimizerApp(OptimizerApp):
         self.workspace_canvas.bind_all("<Button-5>", lambda event: self._workspace_linux_wheel(event, 1), add="+")
         self._build_status_bar()
         self.after(120, self._layout_workspace)
+
+    def _build_hero_power_tab(self):
+        hero_power_ui.build_tab(self, COLORS)
+
+    def _build_equipment_tab(self):
+        equipment_ui.build_tab(self, COLORS)
+
+    def _collect_equipment_state(self) -> Dict[str, object]:
+        return equipment_ui.collect_state(self)
+
+    def _apply_equipment_state(self, data: object):
+        equipment_ui.apply_state(self, data)
+
+    def calibrate_potential_capture(self):
+        equipment_ui.calibrate_capture(self)
+
+    def toggle_potential_auto_scan(self):
+        try:
+            runtime = self._potential_ocr_runtime()
+            equipment_ui.toggle_auto_monitor(
+                self,
+                executable=runtime.executable,
+                tessdata=runtime.tessdata,
+                parse_number=parse_number,
+                score_fn=_score_character,
+                class_main_stat=CLASS_MAIN_STAT,
+            )
+        except Exception as exc:
+            messagebox.showerror("Potential Auto Scan", str(exc), parent=self)
+
+    def refresh_potential_priority(self):
+        equipment_ui.refresh_priority(
+            self,
+            parse_number=parse_number,
+            score_fn=_score_character,
+            class_main_stat=CLASS_MAIN_STAT,
+        )
+
+    def import_potential_configured_rates(self):
+        equipment_ui.import_configured_rates(self)
+
+    def export_potential_rate_template(self):
+        equipment_ui.export_rate_template(self)
+
+    def export_potential_configured_rates(self):
+        equipment_ui.export_configured_rates(self)
+
+    def clear_potential_configured_rates(self):
+        equipment_ui.clear_configured_rates(self)
+
+    def _potential_ocr_runtime(self):
+        runtime = resolve_tesseract_runtime()
+        if runtime is None:
+            raise RuntimeError(
+                "Potential OCR could not find Tesseract. Install tesseract, or use a packaged release that includes the OCR runtime."
+            )
+        return runtime
+
+    def save_corrected_current_potential(self):
+        if equipment_ui.save_corrected_current(self, parse_number=parse_number):
+            self.refresh_potential_priority()
+
+    def scan_current_potential(self):
+        try:
+            runtime = self._potential_ocr_runtime()
+            equipment_ui.start_manual_live_ocr(
+                self,
+                mode="current",
+                executable=runtime.executable,
+                tessdata=runtime.tessdata,
+                parse_number=parse_number,
+                score_fn=_score_character,
+                class_main_stat=CLASS_MAIN_STAT,
+            )
+        except Exception as exc:
+            messagebox.showerror("Scan Current Potential", str(exc), parent=self)
+
+    def scan_current_and_start_auto_scan(self):
+        try:
+            runtime = self._potential_ocr_runtime()
+            equipment_ui.start_manual_live_ocr(
+                self,
+                mode="current_auto",
+                executable=runtime.executable,
+                tessdata=runtime.tessdata,
+                parse_number=parse_number,
+                score_fn=_score_character,
+                class_main_stat=CLASS_MAIN_STAT,
+            )
+        except Exception as exc:
+            messagebox.showerror("Scan Current Potential", str(exc), parent=self)
+
+    def read_potential_live(self):
+        try:
+            runtime = self._potential_ocr_runtime()
+            equipment_ui.start_manual_live_ocr(
+                self,
+                mode="new",
+                executable=runtime.executable,
+                tessdata=runtime.tessdata,
+                parse_number=parse_number,
+                score_fn=_score_character,
+                class_main_stat=CLASS_MAIN_STAT,
+            )
+        except Exception as exc:
+            messagebox.showerror("Potential OCR", str(exc), parent=self)
+
+    def read_potential_file(self):
+        path = filedialog.askopenfilename(
+            parent=self,
+            title="Choose a screenshot containing the Potential panel",
+            filetypes=(("PNG/JPEG images", "*.png *.jpg *.jpeg *.webp"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            if Image is None:
+                raise RuntimeError("Pillow is required for Potential screenshot OCR.")
+            image = Image.open(path).convert("RGB")
+            runtime = self._potential_ocr_runtime()
+            equipment_ui.process_image(
+                self,
+                image,
+                executable=runtime.executable,
+                tessdata=runtime.tessdata,
+                parse_number=parse_number,
+                score_fn=_score_character,
+                class_main_stat=CLASS_MAIN_STAT,
+                deduct_cube=False,
+                record_observation=False,
+            )
+        except Exception as exc:
+            messagebox.showerror("Potential OCR", str(exc), parent=self)
+
+    def compare_potential_roll(self):
+        equipment_ui.compare_candidate(
+            self,
+            parse_number=parse_number,
+            score_fn=_score_character,
+            class_main_stat=CLASS_MAIN_STAT,
+            record_observation=False,
+        )
+
+    def accept_potential_roll(self):
+        equipment_ui.accept_candidate(
+            self,
+            parse_number=parse_number,
+            score_fn=_score_character,
+            class_main_stat=CLASS_MAIN_STAT,
+        )
+        self.refresh_potential_priority()
+
+    def save_current_potential(self):
+        equipment_ui.save_current(self)
+        self.refresh_potential_priority()
+
+    def reset_potential_history(self):
+        equipment_ui.reset_history(self)
+
+    def _collect_current_ability_lines(self):
+        return hero_power_ui.collect_current_lines(self, parse_number)
+
+    def _collect_hero_power_state(self) -> Dict[str, object]:
+        return hero_power_ui.collect_state(self)
+
+    def _apply_hero_power_state(self, data: object):
+        hero_power_ui.apply_state(self, data)
+
+    def analyze_hero_power(self):
+        hero_power_ui.analyze(
+            self,
+            parse_number=parse_number,
+            clamp=clamp,
+            score_fn=_score_character,
+            combine_diminishing=combine_diminishing,
+        )
 
     def _on_root_resize_for_character_tab(self, _event=None):
         # Only the single Canvas background is resized. The floating widgets are
@@ -8231,6 +8472,8 @@ class AdvancedOptimizerApp(OptimizerApp):
             top_results=top_results,
             builds=builds,
             active_build=self.active_build_name,
+            hero_power=self._collect_hero_power_state(),
+            equipment=self._collect_equipment_state(),
         )
 
     def apply_account(self, account: AccountProfile):
@@ -8253,6 +8496,8 @@ class AdvancedOptimizerApp(OptimizerApp):
             self.active_build_name = account.active_build if account.active_build in self.account_builds else next(iter(self.account_builds))
             self._refresh_build_selector()
             self._apply_build(self.account_builds[self.active_build_name])
+            self._apply_hero_power_state(account.hero_power)
+            self._apply_equipment_state(account.equipment)
         finally:
             self._build_syncing = False
             self._loading_profile = previous
@@ -8718,6 +8963,10 @@ class AdvancedOptimizerApp(OptimizerApp):
 
     def _poll_worker_queue(self):
         active = self.worker is not None and self.worker.is_alive()
+        # Most queue polls contain only progress updates or no message at all.
+        # Initialize this for every path; it is set True only when a completed
+        # team optimization requested the automatic sensitivity follow-up.
+        auto_followup = False
         try:
             while True:
                 message = self.worker_queue.get_nowait()
